@@ -147,6 +147,7 @@ Decided up front because signup is open and anonymous.
 - Rate limiting on login and signup: Cloudflare rate limiting rules on the free plan, plus per-account lockout after repeated failures.
 - No edit/delete routes exist. The D1 access pattern uses INSERT and SELECT only for `posts`; the only UPDATE is `hidden` on the admin path.
 - Admin: a single handle listed in Worker env is treated as admin.
+- Open source: all secrets (HMAC pepper, Turnstile secret, admin handle) are Worker secrets set via `wrangler secret put`. `.dev.vars` is gitignored. Nothing security-relevant depends on the code being private.
 
 **Technical Risks**
 
@@ -249,6 +250,7 @@ Phases 3 and 4 can run together after auth exists: one builds routes and data, t
 | Categories | Free tags | Fixed entry kinds (Repov-style) | User choice |
 | Autosave | localStorage first, server drafts second | Server-only | Local survives refresh with zero latency and zero cost |
 | Domain | Free subdomain | Custom domain | User: "subdomain is okay" |
+| License | MIT, public repo from day one | AGPL, closed | User: open source. MIT matches Bear and Mataroa; pepper, Turnstile key, and admin handle live only in Worker secrets, never in the repo |
 | Social features | None | Comments, likes, follows | User decision; writing over engagement |
 | Post length | No cap, 1 MB hard stop | 10k chars | User: same as Mataroa, which has none |
 | Images | R2 with client-side re-encode | No images, Cloudflare Images | User wants images; R2 is free with zero egress; canvas re-encode strips EXIF for free |
