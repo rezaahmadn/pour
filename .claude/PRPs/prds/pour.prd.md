@@ -25,7 +25,6 @@ We'll know we're right when Reza publishes 20 or more posts in the first 30 days
 
 - Comments, likes, follows, DMs - social mechanics pull toward engagement metrics, not writing.
 - Edit or delete of published posts - the timeline is a ledger; permanence is the point.
-- Image upload (v1) - storage and moderation cost; text first.
 - Search (v1) - tags and handle pages cover navigation for now.
 - Blockchain storage - see Decisions Log.
 - Email or password auth - the account number is the only credential.
@@ -42,9 +41,9 @@ We'll know we're right when Reza publishes 20 or more posts in the first 30 days
 
 ## Open Questions
 
-- [ ] Post length cap? (Suggest 10,000 characters; D1 row limits are far above this.)
-- [ ] Will images ever be allowed? If yes, R2 is the free-tier path.
-- [ ] Spam plan when strangers arrive: invite codes, proof-of-work, or manual approval?
+- [x] Post length cap: none, matching Mataroa. Hard stop at 1 MB per body for D1 safety.
+- [x] Images: yes, via R2. See Solution Detail and Decisions Log.
+- [x] Spam plan: decided now. See Spam and Abuse section.
 - [ ] Does "pour" stay as the project name and subdomain?
 - [ ] Recovery for lost account numbers: none (Mullvad-style) or optional recovery email later?
 - [ ] 16 or 20 digit account numbers?
@@ -90,13 +89,15 @@ When a thought is worth keeping, I want to open a URL and write immediately, so 
 | Should | `/@handle` author pages | Timeline "just like Repov" per person |
 | Should | Server-side draft sync (one draft row per user) | Cross-device continuation |
 | Should | RSS feed for timeline, handle, and tag | Bear-style openness; cheap |
+| Should | Image upload to R2 (client-side resize and re-encode, EXIF stripped) | User wants images; Repov-style entries |
+| Must | Spam and abuse controls (Turnstile on signup, rate limits, account freeze) | Anonymous open signup is otherwise a spam magnet |
 | Could | Public chain verification endpoint (`/verify`) | Lets anyone confirm integrity |
 | Could | Passkey (WebAuthn) as optional second login method | Better UX; number remains fallback |
 | Could | Dark mode via `prefers-color-scheme` | Small CSS cost |
 | Could | Daily anchor of latest chain hash to an external system | External proof; only if cheap and simple |
 | Won't | Comments, likes, follows, DMs | Out of scope by decision |
 | Won't | Edit or delete published posts | Ledger |
-| Won't | Images, search (v1) | Deferred |
+| Won't | Search (v1) | Deferred |
 
 ### MVP Scope
 
@@ -111,6 +112,24 @@ Signup with generated number and handle, login, write a markdown post with tags,
 5. Publish: server inserts post, computes hash from previous hash, redirects to the post. Local draft cleared.
 6. Post appears at top of timeline, on `/@handle`, and on each `/tag/:tag`.
 
+### Spam and Abuse
+
+Decided up front because signup is open and anonymous.
+
+- **Signup**: Cloudflare Turnstile (free, invisible for most humans) on the "get a number" form. Per-IP cap of 3 signups per day enforced in D1.
+- **Posting**: per-account limit of 1 post per minute and 50 per day. Accounts younger than 10 minutes cannot post.
+- **Login**: 5 failed attempts per number locks it for 15 minutes. Cloudflare rate limiting rule on the login path.
+- **Admin**: hide any post (record stays, hash stays). Freeze any account (cannot post, existing posts remain). Freeze is the "ban"; nothing is deleted.
+- **Images**: same hide and freeze rules. Hidden post hides its images.
+- **Escape hatch**: `SIGNUP_OPEN` env flag. If spam wins, flip to closed and require an invite code. No code change.
+
+### Images
+
+- Upload from the editor. Browser resizes to max 2000 px on the long edge and re-encodes to WebP or JPEG with a canvas before upload. This strips EXIF, including GPS, which matters for anonymous users, and keeps files small.
+- Server accepts only re-encoded image types, caps at 5 MB, stores in R2 under a random key, and records `(post_id, key, sha256)` in an `images` table.
+- Image hashes are included in the post hash so the ledger covers them.
+- Served through the Worker from the R2 binding with long cache headers. R2 free tier: 10 GB storage, zero egress.
+
 ---
 
 ## Technical Approach
@@ -123,6 +142,7 @@ Signup with generated number and handle, login, write a markdown post with tags,
 - Tables: `users(id, handle, number_hmac, created_at)`, `sessions(id, user_id, expires_at)`, `posts(id, user_id, body, created_at, prev_hash, hash, hidden)`, `tags(post_id, tag)`, `drafts(user_id, body, tags, updated_at)`.
 - Hash chain: `hash = sha256(prev_hash || user_id || body || created_at)`. Insert happens inside a single D1 batch that reads the latest hash and writes the new row, to avoid forks under concurrent publishes.
 - Account numbers: generated with `crypto.getRandomValues`, stored as HMAC-SHA256 with a secret pepper from Worker env. Slow hashing is unnecessary because the credential is high-entropy, and it would exceed the 10 ms free-tier CPU limit.
+- Post body: no cap by policy (matching Mataroa); server rejects bodies over 1 MB to stay inside D1 row limits.
 - Sessions: random 32-byte id in D1, HttpOnly Secure SameSite=Lax cookie, 30-day expiry.
 - Rate limiting on login and signup: Cloudflare rate limiting rules on the free plan, plus per-account lockout after repeated failures.
 - No edit/delete routes exist. The D1 access pattern uses INSERT and SELECT only for `posts`; the only UPDATE is `hidden` on the admin path.
@@ -134,7 +154,9 @@ Signup with generated number and handle, login, write a markdown post with tags,
 |------|------------|------------|
 | Free Workers 10 ms CPU limit on auth paths | M | HMAC instead of Argon2/bcrypt; measure with `wrangler dev` |
 | Hash chain fork from concurrent publishes | L | Single D1 batch per publish; verify endpoint detects forks |
-| Spam once public | M | Keep signup open only to Reza initially (invite code env flag); decide spam plan before opening |
+| Spam once public | M | Turnstile, per-IP signup cap, per-account post limits, freeze; `SIGNUP_OPEN` flag as escape hatch |
+| EXIF or GPS leak from anonymous users' photos | M | Client-side canvas re-encode strips metadata; server rejects non-re-encoded uploads |
+| R2 abuse via large or many uploads | L | 5 MB cap, 10 images per post, counted against daily post limit |
 | Lost account number, angry user | M | Show once, copy and download buttons, explicit warning; document "no recovery" on signup page |
 | iOS Safari drops localStorage in private mode | L | Feature-detect, fall back to in-memory with a visible warning |
 
@@ -152,13 +174,14 @@ Signup with generated number and handle, login, write a markdown post with tags,
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
 | 1 | Scaffold and deploy | Hono + D1 + Drizzle worker, schema, CI deploy to workers.dev, hello-world timeline | pending | - | - | - |
-| 2 | Account-number auth | Generate number, handle, HMAC storage, sessions, login/logout, rate limit | pending | - | 1 | - |
+| 2 | Account-number auth | Generate number, handle, HMAC storage, sessions, login/logout, Turnstile, rate limits | pending | - | 1 | - |
 | 3 | Write and publish | Editor page, markdown render, tags, hash-chain insert, post page | pending | with 4 | 2 | - |
 | 4 | Design system | Bear-inspired CSS, typography, layout, dark mode, mobile-first | pending | with 3 | 1 | - |
 | 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | pending | - | 3 | - |
 | 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | pending | with 7 | 3, 4 | - |
-| 7 | Admin and ledger | Hide flag, admin route, `/verify` chain endpoint | pending | with 6 | 3 | - |
-| 8 | Server drafts and polish | Drafts table sync, passkey (optional), signup gating flag | pending | - | 5, 6, 7 | - |
+| 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | pending | with 6 | 3 | - |
+| 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | pending | - | 3, 7 | - |
+| 8 | Server drafts and polish | Drafts table sync, passkey (optional), `SIGNUP_OPEN` flag | pending | with 9 | 5, 6, 7 | - |
 
 ### Phase Details
 
@@ -169,7 +192,7 @@ Signup with generated number and handle, login, write a markdown post with tags,
 
 **Phase 2: Account-number auth**
 - **Goal**: Anyone can get a number, pick a handle, and log in.
-- **Scope**: Number generation, HMAC with pepper, `users` and `sessions` tables, cookie middleware, login/logout, lockout and rate limiting.
+- **Scope**: Number generation, HMAC with pepper, `users` and `sessions` tables, cookie middleware, login/logout, Turnstile on signup, per-IP signup cap, lockout and rate limiting.
 - **Success signal**: Signup shows number once; login with it works; wrong number fails and locks after N tries.
 
 **Phase 3: Write and publish**
@@ -194,7 +217,7 @@ Signup with generated number and handle, login, write a markdown post with tags,
 
 **Phase 7: Admin and ledger**
 - **Goal**: Safety and verifiability.
-- **Scope**: Admin-only hide toggle, `/verify` endpoint that walks the chain, hidden placeholder in timeline.
+- **Scope**: Admin-only hide toggle, account freeze, `/verify` endpoint that walks the chain, hidden placeholder in timeline.
 - **Success signal**: Hidden post shows as "entry hidden" with hash intact; `/verify` reports OK.
 
 **Phase 8: Server drafts and polish**
@@ -202,9 +225,14 @@ Signup with generated number and handle, login, write a markdown post with tags,
 - **Scope**: `drafts` upsert every 5 s, conflict rule by timestamp, `SIGNUP_OPEN` env flag with invite code, optional passkey.
 - **Success signal**: Draft started on phone appears on laptop; signup closed unless flag set.
 
+**Phase 9: Images**
+- **Goal**: Posts can carry images without leaking metadata or costing money.
+- **Scope**: R2 bucket binding, editor upload with canvas re-encode, upload route with type and size checks, `images` table, image hashes folded into post hash, serving route with cache headers.
+- **Success signal**: Photo taken on phone uploads under 500 KB with no EXIF; hidden post returns 404 for its images.
+
 ### Parallelism Notes
 
-Phases 3 and 4 can run together after auth exists: one builds routes and data, the other builds CSS against static markup. Phases 6 and 7 are independent read paths on the same `posts` table. Phase 5 depends on the editor from phase 3. Phase 8 is the tail.
+Phases 3 and 4 can run together after auth exists: one builds routes and data, the other builds CSS against static markup. Phases 6 and 7 are independent read paths on the same `posts` table. Phase 5 depends on the editor from phase 3. Phases 8 and 9 can run together at the tail.
 
 ---
 
@@ -222,6 +250,9 @@ Phases 3 and 4 can run together after auth exists: one builds routes and data, t
 | Autosave | localStorage first, server drafts second | Server-only | Local survives refresh with zero latency and zero cost |
 | Domain | Free subdomain | Custom domain | User: "subdomain is okay" |
 | Social features | None | Comments, likes, follows | User decision; writing over engagement |
+| Post length | No cap, 1 MB hard stop | 10k chars | User: same as Mataroa, which has none |
+| Images | R2 with client-side re-encode | No images, Cloudflare Images | User wants images; R2 is free with zero egress; canvas re-encode strips EXIF for free |
+| Spam | Turnstile + rate limits + freeze + `SIGNUP_OPEN` flag | Invite-only, proof-of-work, manual approval | All free, no user friction for humans, reversible |
 
 ---
 
