@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pour",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "public" },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pour",
+      "database_id": "REPLACE_WITH_ID_FROM_wrangler_d1_create",
+      "migrations_dir": "migrations"
+    }
+  ]
+  // Secrets (set with `wrangler secret put NAME`, never commit):
+  //   PEPPER            HMAC key for account numbers
+  //   TURNSTILE_SECRET  Cloudflare Turnstile server key
+  //   ADMIN_HANDLE      handle treated as admin
+}
