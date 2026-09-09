@@ -44,9 +44,9 @@ We'll know we're right when Reza publishes 20 or more posts in the first 30 days
 - [x] Post length cap: none, matching Mataroa. Hard stop at 1 MB per body for D1 safety.
 - [x] Images: yes, via R2. See Solution Detail and Decisions Log.
 - [x] Spam plan: decided now. See Spam and Abuse section.
-- [ ] Does "pour" stay as the project name and subdomain?
-- [ ] Recovery for lost account numbers: none (Mullvad-style) or optional recovery email later?
-- [ ] 16 or 20 digit account numbers?
+- [x] Name: "pour" stays as project name and subdomain.
+- [x] Recovery: none in v1. Optional recovery email as a later Could item; number stays the only login credential.
+- [x] Account numbers: 16 digits.
 
 ---
 
@@ -93,6 +93,7 @@ When a thought is worth keeping, I want to open a URL and write immediately, so 
 | Must | Spam and abuse controls (Turnstile on signup, rate limits, account freeze) | Anonymous open signup is otherwise a spam magnet |
 | Could | Public chain verification endpoint (`/verify`) | Lets anyone confirm integrity |
 | Could | Passkey (WebAuthn) as optional second login method | Better UX; number remains fallback |
+| Could | Optional recovery email (opt-in, hashed, only used to re-issue a number) | User asked for it later; must stay optional to keep anonymous default |
 | Could | Dark mode via `prefers-color-scheme` | Small CSS cost |
 | Could | Daily anchor of latest chain hash to an external system | External proof; only if cheap and simple |
 | Won't | Comments, likes, follows, DMs | Out of scope by decision |
@@ -255,6 +256,8 @@ Phases 3 and 4 can run together after auth exists: one builds routes and data, t
 | Post length | No cap, 1 MB hard stop | 10k chars | User: same as Mataroa, which has none |
 | Images | R2 with client-side re-encode | No images, Cloudflare Images | User wants images; R2 is free with zero egress; canvas re-encode strips EXIF for free |
 | Spam | Turnstile + rate limits + freeze + `SIGNUP_OPEN` flag | Invite-only, proof-of-work, manual approval | All free, no user friction for humans, reversible |
+| Number length | 16 digits | 20 digits | User choice; about 53 bits, adequate with rate limiting and HMAC pepper |
+| Recovery | None in v1, optional email later | Mandatory email, none ever | Keeps anonymous default; user wants an opt-in path eventually |
 
 ---
 
@@ -269,4 +272,4 @@ Hono on Cloudflare Workers with D1 and Drizzle is a well-documented stack. Key c
 ---
 
 *Generated: 2026-09-09*
-*Status: DRAFT - needs validation*
+*Status: DRAFT - all open questions resolved, ready for /ecc:prp-plan*
