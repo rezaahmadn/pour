@@ -9,6 +9,8 @@ type PostRow = {
   body: string;
   created_at: number;
   handle: string;
+  hidden: number;
+  hash: string;
 };
 
 /** ISO date, and a machine readable datetime for the <time> element. */
@@ -31,14 +33,40 @@ export function postMeta(row: PostRow, tags: string[]) {
 export const postRoutes = new Hono<AppEnv>();
 
 postRoutes.get("/p/:id", async (c) => {
+  // Blanked in SQL rather than in the template, so a hidden post's contents cannot
+  // reach the page by mistake. The row itself still resolves, because the entry is
+  // still in the ledger and its link should not rot.
   const row = await c.env.DB.prepare(
-    "SELECT posts.id AS id, posts.body AS body, posts.created_at AS created_at, " +
-      "users.handle AS handle FROM posts JOIN users ON users.id = posts.user_id " +
-      "WHERE posts.id = ? AND posts.hidden = 0",
+    "SELECT posts.id AS id, posts.created_at AS created_at, posts.hidden AS hidden, " +
+      "posts.hash AS hash, " +
+      "CASE WHEN posts.hidden = 1 THEN '' ELSE posts.body END AS body, " +
+      "CASE WHEN posts.hidden = 1 THEN '' ELSE users.handle END AS handle " +
+      "FROM posts JOIN users ON users.id = posts.user_id WHERE posts.id = ?",
   )
     .bind(c.req.param("id"))
     .first<PostRow>();
   if (!row) return c.notFound();
+
+  if (row.hidden) {
+    return c.html(
+      page({
+        title: "entry hidden",
+        user: c.get("user"),
+        body: html`<p class="meta">
+            <time datetime="${new Date(row.created_at * 1000).toISOString()}"
+              >${formatDate(row.created_at)}</time
+            >
+            <span class="flag">entry hidden</span>
+          </p>
+          <p>This entry was hidden. It has not been removed from the record.</p>
+          <p class="note">
+            Its hash still holds the chain together:
+            <code>${row.hash}</code>. See <a href="/verify">verify</a>.
+          </p>`,
+      }),
+      410,
+    );
+  }
 
   const { results: tagRows } = await c.env.DB.prepare(
     "SELECT tag FROM tags WHERE post_id = ? ORDER BY tag",

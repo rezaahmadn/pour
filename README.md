@@ -33,6 +33,14 @@ npm run db:clear:local   # drop throttle state, keep accounts and posts
 npm run db:reset:local   # wipe the local database and re-apply migrations
 ```
 
+Stop the dev server before `db:reset:local`. It deletes the database directory, and a
+running server keeps the old file open, which leaves the server and the CLI reading
+two different databases until you restart it.
+
+One more thing worth knowing while testing: a post's `created_at` is part of its hash.
+Editing timestamps directly to get around the one-a-minute limit will break the chain
+and `/verify` will say so. Publish from separate accounts instead.
+
 To drive the flow from a terminal, note that the token below is the dummy value the test keys accept, and that `Origin` is required because CSRF protection rejects form posts without it.
 
 ```sh

@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import app, { excerpt } from "../src/index";
-import { GENESIS_HASH } from "../src/post";
+import app from "../src/index";
+import { GENESIS_HASH, excerptOf } from "../src/post";
 import { POSTS_PER_DAY } from "../src/routes/write";
 import {
   ORIGIN,
@@ -223,15 +223,23 @@ describe("posting limits", () => {
 });
 
 describe("the ledger is append only", () => {
-  it("hides a hidden post from its own page and the timeline", async () => {
+  it("replaces a hidden post with a placeholder rather than erasing it", async () => {
     const { cookie } = await publisher("hidden_post");
-    const { id } = await publish(cookie, "this will be hidden away");
+    const { id } = await publish(cookie, "this will be hidden away", "secret");
     await env.DB.prepare("UPDATE posts SET hidden = 1 WHERE id = ?").bind(id).run();
 
-    expect((await app.request(`${ORIGIN}/p/${id}`, undefined, env)).status).toBe(404);
+    // The link still resolves, because the entry is still in the record.
+    const res = await app.request(`${ORIGIN}/p/${id}`, undefined, env);
+    expect(res.status).toBe(410);
+    const page = await res.text();
+    expect(page).toContain("entry hidden");
+    expect(page).not.toContain("this will be hidden away");
+
     const timelineRes = await app.request(`${ORIGIN}/`, undefined, env);
     const timeline = await timelineRes.text();
+    expect(timeline).toContain("entry hidden");
     expect(timeline).not.toContain("this will be hidden away");
+    expect(timeline).not.toContain("@hidden_post");
   });
 
   it("exposes no route that edits or deletes a post", async () => {
@@ -264,16 +272,16 @@ describe("csrf still applies to publishing", () => {
 
 describe("timeline excerpts", () => {
   it("reads as prose rather than as markdown source", () => {
-    expect(excerpt("# Hello\n\nThis is *markdown* with a [link](https://example.com).")).toBe(
+    expect(excerptOf("# Hello\n\nThis is *markdown* with a [link](https://example.com).")).toBe(
       "Hello This is markdown with a link.",
     );
-    expect(excerpt("- one\n- two")).toBe("one two");
-    expect(excerpt("> quoted thought")).toBe("quoted thought");
-    expect(excerpt("here is ```\nconst x = 1\n``` code")).toBe("here is code");
+    expect(excerptOf("- one\n- two")).toBe("one two");
+    expect(excerptOf("> quoted thought")).toBe("quoted thought");
+    expect(excerptOf("here is ```\nconst x = 1\n``` code")).toBe("here is code");
   });
 
   it("trims to the limit and marks the cut", () => {
-    const out = excerpt("word ".repeat(80), 20);
+    const out = excerptOf("word ".repeat(80), 20);
     expect(out.length).toBeLessThanOrEqual(21);
     expect(out.endsWith("…")).toBe(true);
   });

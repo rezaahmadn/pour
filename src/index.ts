@@ -5,7 +5,10 @@ import type { AppEnv } from "./env";
 import { sessionMiddleware } from "./auth";
 import { page } from "./layout";
 import { authRoutes } from "./routes/auth";
-import { postMeta, postRoutes } from "./routes/post";
+import { excerptOf } from "./post";
+import { adminRoutes } from "./routes/admin";
+import { formatDate, postMeta, postRoutes } from "./routes/post";
+import { verifyRoutes } from "./routes/verify";
 import { writeRoutes } from "./routes/write";
 
 const app = new Hono<AppEnv>();
@@ -34,10 +37,23 @@ app.use(sessionMiddleware);
 app.get("/", async (c) => {
   // Newest first, hidden excluded. Pagination, handle pages and tag pages are phase 6.
   const { results } = await c.env.DB.prepare(
-    "SELECT posts.id AS id, posts.body AS body, posts.created_at AS created_at, " +
-      "users.handle AS handle FROM posts JOIN users ON users.id = posts.user_id " +
-      "WHERE posts.hidden = 0 ORDER BY posts.created_at DESC, posts.rowid DESC LIMIT 50",
-  ).all<{ id: string; body: string; created_at: number; handle: string }>();
+    // A hidden entry stays on the timeline as a placeholder so the record reads as
+    // continuous, but the blanking happens in SQL: its body and author never reach
+    // the template at all, so no rendering mistake can leak them.
+    "SELECT posts.id AS id, posts.created_at AS created_at, posts.hidden AS hidden, " +
+      "posts.hash AS hash, " +
+      "CASE WHEN posts.hidden = 1 THEN '' ELSE posts.body END AS body, " +
+      "CASE WHEN posts.hidden = 1 THEN '' ELSE users.handle END AS handle " +
+      "FROM posts JOIN users ON users.id = posts.user_id " +
+      "ORDER BY posts.created_at DESC, posts.rowid DESC LIMIT 50",
+  ).all<{
+    id: string;
+    body: string;
+    created_at: number;
+    handle: string;
+    hidden: number;
+    hash: string;
+  }>();
 
   const { results: tagRows } = await c.env.DB.prepare(
     "SELECT post_id, tag FROM tags ORDER BY tag",
@@ -56,10 +72,22 @@ app.get("/", async (c) => {
       body: results.length
         ? html`<ul class="timeline">
             ${results.map(
-              (post) => html`<li>
-                ${postMeta(post, tagsByPost.get(post.id) ?? [])}
-                <p class="excerpt"><a href="/p/${post.id}">${excerpt(post.body)}</a></p>
-              </li>`,
+              (post) =>
+                post.hidden
+                  ? html`<li class="hidden-entry">
+                      <p class="meta">
+                        <a href="/p/${post.id}">${formatDate(post.created_at)}</a>
+                        <span class="flag">entry hidden</span>
+                      </p>
+                      <p class="excerpt">
+                        This entry was hidden. Its hash stays in the chain:
+                        <code>${post.hash.slice(0, 16)}\u2026</code>
+                      </p>
+                    </li>`
+                  : html`<li>
+                      ${postMeta(post, tagsByPost.get(post.id) ?? [])}
+                      <p class="excerpt"><a href="/p/${post.id}">${excerptOf(post.body)}</a></p>
+                    </li>`,
             )}
           </ul>`
         : html`<p class="note">Nothing here yet. Be the first to write something.</p>`,
@@ -67,30 +95,12 @@ app.get("/", async (c) => {
   );
 });
 
-/**
- * A plain-text opening for the timeline. Strips the common markdown marks so the
- * excerpt reads as prose rather than as source. The result is interpolated through
- * the escaping template like any other text, so it is not a sanitiser and does not
- * need to be one.
- */
-export function excerpt(body: string, limit = 180): string {
-  const flat = body
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/^\s{0,3}(#{1,6}|>)\s*/gm, "")
-    .replace(/^\s{0,3}[-*+]\s+/gm, "")
-    .replace(/^\s{0,3}\d+\.\s+/gm, "")
-    .replace(/[*_`~]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return flat.length > limit ? `${flat.slice(0, limit).trimEnd()}\u2026` : flat;
-}
-
 app.get("/health", (c) => c.text("ok"));
 
 app.route("/", authRoutes);
 app.route("/", writeRoutes);
 app.route("/", postRoutes);
+app.route("/", verifyRoutes);
+app.route("/", adminRoutes);
 
 export default app;

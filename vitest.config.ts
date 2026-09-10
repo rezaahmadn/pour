@@ -14,6 +14,9 @@ export default defineConfig(async () => {
             PEPPER: "test-pepper",
             TURNSTILE_SECRET: "test-secret",
             TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+            // Pinned here rather than left to .dev.vars, which CI does not have.
+            // The admin tests need a known handle in every environment.
+            ADMIN_HANDLE: "test_admin",
           },
         },
       }),

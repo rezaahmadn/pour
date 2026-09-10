@@ -62,3 +62,23 @@ export function isUniqueViolation(err: unknown, column: string): boolean {
   const cause = (err as { cause?: unknown })?.cause;
   return cause !== undefined && String(cause).includes(needle);
 }
+
+/**
+ * A plain-text opening for the timeline. Strips the common markdown marks so the
+ * excerpt reads as prose rather than as source. The result is interpolated through
+ * the escaping template like any other text, so it is not a sanitiser and does not
+ * need to be one.
+ */
+export function excerptOf(body: string, limit = 180): string {
+  const flat = body
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}(#{1,6}|>)\s*/gm, "")
+    .replace(/^\s{0,3}[-*+]\s+/gm, "")
+    .replace(/^\s{0,3}\d+\.\s+/gm, "")
+    .replace(/[*_`~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return flat.length > limit ? `${flat.slice(0, limit).trimEnd()}\u2026` : flat;
+}

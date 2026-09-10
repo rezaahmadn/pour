@@ -384,3 +384,49 @@ textarea:focus {
 #draft-status {
   font-variant-numeric: tabular-nums;
 }
+
+/* Admin and verification */
+
+h2 {
+  margin: var(--s5) 0 var(--s3);
+  font-size: 1.15rem;
+}
+
+.flag {
+  margin-left: var(--s1);
+  padding: 0.1rem 0.4rem;
+  background: var(--wash);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.hidden-entry .excerpt {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.inline-form {
+  display: inline;
+  margin: 0;
+}
+
+.verdict {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.verdict.ok {
+  color: var(--accent);
+}
+
+.verdict.bad {
+  color: var(--danger);
+}
+
+code {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
