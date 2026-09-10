@@ -46,7 +46,7 @@ function signupForm(siteKey: string, error: string | null, handle = "") {
       <div class="cf-turnstile" data-sitekey="${siteKey}" data-size="flexible"></div>
       <button type="submit">Get my number</button>
     </form>
-    <p>Already have a number? <a href="/login">Log in</a></p>`;
+    <p class="note">Already have a number? <a href="/login">Log in</a></p>`;
 }
 
 function numberReveal(number: string, handle: string) {
@@ -56,11 +56,11 @@ function numberReveal(number: string, handle: string) {
       <strong>Save it now.</strong> This is the only time it is shown. There is no recovery: no
       email, no reset.
     </p>
-    <p>
+    <p class="actions">
       <button type="button" id="copy">Copy</button>
       <a download="pour-account-${handle}.txt" href="data:text/plain,${number}">Download</a>
     </p>
-    <p>Handle: @${handle}</p>
+    <p class="note">Handle: @${handle}</p>
     <p><a href="/write">Start writing</a></p>
     <script>
       var digits = document.getElementById("number").dataset.digits;
@@ -90,7 +90,7 @@ function loginForm(siteKey: string, error: string | null, challenge: boolean) {
         : ""}
       <button type="submit">Log in</button>
     </form>
-    <p>No number yet? <a href="/signup">Get one</a></p>`;
+    <p class="note">No number yet? <a href="/signup">Get one</a></p>`;
 }
 
 // Claims the one unchallenged attempt a client is allowed. Only the request that

@@ -1,2 +1,221 @@
-:root { color-scheme: light dark; }
-body { max-width: 42rem; margin: 3rem auto; padding: 0 1rem; font: 1.05rem/1.6 system-ui, sans-serif; }
+/* pour. Text first, one accent, system fonts, mobile first.
+   Everything is driven off one spacing scale so gaps stay consistent. */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #fffdfa;
+  --fg: #1b1a18;
+  --muted: #6d6a64;
+  --line: #e4dfd6;
+  --accent: #b0521d;
+  --wash: #f7f0e8;
+  --danger: #9c3318;
+
+  --s1: 0.35rem;
+  --s2: 0.7rem;
+  --s3: 1.15rem;
+  --s4: 1.9rem;
+  --s5: 3rem;
+
+  --radius: 7px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131312;
+    --fg: #e9e6e0;
+    --muted: #98948c;
+    --line: #2e2d2a;
+    --accent: #e28b53;
+    --wash: #201d1a;
+    --danger: #e0806a;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: var(--s4) var(--s3) var(--s5);
+  background: var(--bg);
+  color: var(--fg);
+  font: 1.05rem/1.65 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Header. A flex row so the logout form sits on the same line as the links
+   instead of dropping below them, which is what a block-level form does. */
+
+header {
+  padding-bottom: var(--s3);
+  margin-bottom: var(--s4);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+header nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s3);
+}
+
+header nav .brand {
+  font-weight: 600;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+header nav .brand:hover {
+  color: var(--accent);
+}
+
+header nav .handle {
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* Lifts the button out of the form box so it joins the flex row directly. */
+header nav form {
+  display: contents;
+}
+
+/* Typography */
+
+h1 {
+  margin: 0 0 var(--s3);
+  font-size: 1.6rem;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+}
+
+p {
+  margin: 0 0 var(--s3);
+}
+
+main > :last-child {
+  margin-bottom: 0;
+}
+
+/* Forms */
+
+form {
+  margin: var(--s4) 0;
+}
+
+label {
+  display: block;
+  margin-bottom: var(--s3);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+input {
+  display: block;
+  width: 100%;
+  margin-top: var(--s1);
+  padding: 0.62rem 0.7rem;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+}
+
+input:focus {
+  border-color: var(--accent);
+}
+
+button {
+  padding: 0.62rem 1.15rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: 0;
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+/* A button that has to read as a link, in the header and beside Download. */
+.linkish {
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.linkish:hover {
+  filter: none;
+  text-decoration-thickness: 2px;
+}
+
+/* The challenge widget is an iframe with no margin of its own. */
+.cf-turnstile {
+  margin: var(--s3) 0;
+}
+
+.error {
+  margin: 0 0 var(--s3);
+  padding: var(--s2) var(--s3);
+  border-left: 3px solid var(--danger);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--wash);
+}
+
+/* The account number. The only copy of a credential that cannot be recovered,
+   so it gets the weight on the page rather than reading as a caption. */
+
+.number {
+  margin: 0 0 var(--s4);
+  padding: var(--s3) var(--s2);
+  background: var(--wash);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(1.25rem, 6.2vw, 1.85rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  word-spacing: 0.25em;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.95rem;
+}

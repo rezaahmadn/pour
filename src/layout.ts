@@ -11,8 +11,10 @@ type PageOptions = {
 
 export function page(opts: PageOptions) {
   const account = opts.user
-    ? html`<span>@${opts.user.handle}</span>
-        <form method="post" action="/logout" class="inline"><button type="submit">log out</button></form>`
+    ? html`<span class="handle">@${opts.user.handle}</span>
+        <form method="post" action="/logout">
+          <button type="submit" class="linkish">log out</button>
+        </form>`
     : html`<a href="/login">log in</a>`;
   return html`<!doctype html>
     <html lang="en">
@@ -24,7 +26,13 @@ export function page(opts: PageOptions) {
         ${opts.head ?? ""}
       </head>
       <body>
-        <header><a href="/">pour</a> · <a href="/write">write</a> · ${account}</header>
+        <header>
+          <nav>
+            <a class="brand" href="/">pour</a>
+            <a href="/write">write</a>
+            ${account}
+          </nav>
+        </header>
         <main>${opts.body}</main>
       </body>
     </html>`;
