@@ -15,9 +15,12 @@ Design and scope: [`.claude/PRPs/prds/pour.prd.md`](.claude/PRPs/prds/pour.prd.m
 
 ```sh
 npm install
+cp .dev.vars.example .dev.vars
 npm run db:migrate:local
 npm run dev
 ```
+
+`.dev.vars` holds local secrets and is gitignored. The example ships Cloudflare's always-pass Turnstile test keys, so signup works offline.
 
 `npm run check` typechecks, `npm test` runs vitest.
 
@@ -41,6 +44,10 @@ Every push to `main` runs checks, applies D1 migrations, and deploys. Until the 
    npx wrangler secret put ADMIN_HANDLE
    npx wrangler secret put TURNSTILE_SECRET
    ```
+
+   Set `PEPPER` once and never rotate it: it keys the HMAC of every account number, so changing it locks every existing account out permanently.
+
+   `TURNSTILE_SECRET` comes from a Turnstile widget. In the Cloudflare dashboard go to Turnstile, add a widget for hostname `pour.<your-subdomain>.workers.dev` in Managed mode, then paste its **site key** into `vars.TURNSTILE_SITE_KEY` in `wrangler.jsonc` (that key is public) and its **secret key** into the secret above. Until you do, `wrangler.jsonc` ships Cloudflare's always-pass test site key, which real secrets reject, so signup fails in production.
 
 3. Create an API token at https://dash.cloudflare.com/profile/api-tokens using the **Edit Cloudflare Workers** template, and add D1 Edit permission. Find your account ID on the Workers overview page.
 

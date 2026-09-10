@@ -6,3 +6,7 @@ dist/
 .dev.vars
 .wrangler/
 worker-configuration.d.ts
+
+# Local agent tooling state, not project files
+.claude/.headroom_wrap_*
+.serena/
