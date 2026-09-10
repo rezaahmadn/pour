@@ -26,7 +26,7 @@ export const CHAIN_ATTEMPTS = 5;
 function editor(user: User, error: string | null, body = "", tags = "") {
   return html`<h1>write</h1>
     ${error ? html`<p class="error">${error}</p>` : ""}
-    <form method="post" action="/write">
+    <form method="post" action="/write" data-autosave>
       <label>
         your post
         <textarea name="body" rows="14" required autofocus>${body}</textarea>
@@ -37,16 +37,20 @@ function editor(user: User, error: string | null, body = "", tags = "") {
       </label>
       <button type="submit">Publish</button>
     </form>
+    <p class="note"><span id="draft-status"></span></p>
     <p class="note">
       Markdown works. Publishing is permanent: @${user.handle} cannot edit or delete this later.
     </p>`;
 }
 
+/** Draft autosave. Only the editor loads it; every other page stays script free. */
+const editorHead = html`<script src="/editor.js" defer></script>`;
+
 export const writeRoutes = new Hono<AppEnv>();
 
 writeRoutes.get("/write", requireAuth, (c) => {
   const user = c.get("user")!;
-  return c.html(page({ title: "write", user, body: editor(user, null) }));
+  return c.html(page({ title: "write", user, head: editorHead, body: editor(user, null) }));
 });
 
 writeRoutes.post(
@@ -62,7 +66,12 @@ writeRoutes.post(
     const rawTags = typeof form.tags === "string" ? form.tags : "";
     const fail = (status: ContentfulStatusCode, message: string) =>
       c.html(
-        page({ title: "write", user, body: editor(user, message, rawBody, rawTags) }),
+        page({
+          title: "write",
+          user,
+          head: editorHead,
+          body: editor(user, message, rawBody, rawTags),
+        }),
         status,
       );
 

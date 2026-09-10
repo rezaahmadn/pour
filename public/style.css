@@ -350,3 +350,37 @@ textarea:focus {
   border-top: 1px solid var(--line);
   margin: var(--s4) 0;
 }
+
+/* Draft restore offer */
+
+.restore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  margin: var(--s3) 0;
+  padding: var(--s2) var(--s3);
+  background: var(--wash);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 0.95rem;
+}
+
+/* Message on its own line so the two actions group together underneath, rather
+   than the second one wrapping alone. */
+.restore > span {
+  flex: 1 0 100%;
+}
+
+.restore button {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.9rem;
+}
+
+.restore .linkish {
+  padding: 0;
+}
+
+#draft-status {
+  font-variant-numeric: tabular-nums;
+}

@@ -183,7 +183,7 @@ Decided up front because signup is open and anonymous.
 | 2 | Account-number auth | Generate number, handle, HMAC storage, sessions, login/logout, Turnstile, rate limits | complete | - | 1 | `.claude/PRPs/plans/completed/account-number-auth.plan.md` |
 | 3 | Write and publish | Editor page, markdown render, tags, hash-chain insert, post page | complete | with 4 | 2 | `.claude/PRPs/plans/completed/write-and-publish.plan.md` |
 | 4 | Design system | Bear-inspired CSS, typography, layout, dark mode, mobile-first | partial | with 3 | 1 | Palette, spacing scale, dark mode, forms and layout shell shipped in commit 00db4f0. Editor styling and the Lighthouse pass remain |
-| 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | pending | - | 3 | - |
+| 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | complete | - | 3 | Verified in a browser: type, kill the tab, reopen, restore |
 | 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | pending | with 7 | 3, 4 | - |
 | 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | pending | with 6 | 3 | - |
 | 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | pending | - | 3, 7 | - |

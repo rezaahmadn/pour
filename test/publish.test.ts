@@ -278,3 +278,28 @@ describe("timeline excerpts", () => {
     expect(out.endsWith("…")).toBe(true);
   });
 });
+
+describe("the editor carries the autosave hooks", () => {
+  it("marks the form and loads the script only on the editor", async () => {
+    const { cookie } = await publisher("autosave_hooks");
+    const write = await (await app.request(`${ORIGIN}/write`, { headers: { cookie } }, env)).text();
+    expect(write).toContain("data-autosave");
+    expect(write).toContain('src="/editor.js"');
+    expect(write).toContain('id="draft-status"');
+
+    // Every other page stays script free, which is the point of the design.
+    const timeline = await (await app.request(`${ORIGIN}/`, undefined, env)).text();
+    expect(timeline).not.toContain("editor.js");
+    const login = await (await app.request(`${ORIGIN}/login`, undefined, env)).text();
+    expect(login).not.toContain("editor.js");
+  });
+
+  it("keeps the hooks on a rejected publish, so the draft is still held", async () => {
+    const { cookie } = await publisher("autosave_reject");
+    const { res } = await publish(cookie, "kept text", "bad tag!");
+    const body = await res.text();
+    expect(body).toContain("data-autosave");
+    expect(body).toContain('src="/editor.js"');
+    expect(body).toContain("kept text");
+  });
+});
