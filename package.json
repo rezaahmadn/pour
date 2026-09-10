@@ -9,6 +9,8 @@
     "test": "vitest run",
     "db:migrate:local": "wrangler d1 migrations apply pour --local",
     "db:migrate:remote": "wrangler d1 migrations apply pour --remote",
+    "db:clear:local": "wrangler d1 execute pour --local --command \"DELETE FROM signups; DELETE FROM login_failures;\"",
+    "db:reset:local": "rm -rf .wrangler/state/v3/d1 && npm run db:migrate:local",
     "types": "wrangler types"
   },
   "dependencies": {

@@ -20,7 +20,44 @@ npm run db:migrate:local
 npm run dev
 ```
 
-`.dev.vars` holds local secrets and is gitignored. The example ships Cloudflare's always-pass Turnstile test keys, so signup works offline.
+`.dev.vars` holds local secrets and is gitignored. The example ships Cloudflare's always-pass Turnstile test keys, so signup works offline and the widget solves itself.
+
+The dev server listens on port 8788, since 8787 is wrangler's default and tends to collide. Pass `--port` to change it for one run.
+
+### Testing signup and login locally
+
+Local requests carry no `CF-Connecting-IP`, so every one of them looks like the same client. That means the abuse controls all share a single bucket: three signups exhausts the daily cap, and five bad login guesses locks you out of your own machine. Two scripts get you unstuck.
+
+```sh
+npm run db:clear:local   # drop throttle state, keep accounts and posts
+npm run db:reset:local   # wipe the local database and re-apply migrations
+```
+
+To drive the flow from a terminal, note that the token below is the dummy value the test keys accept, and that `Origin` is required because CSRF protection rejects form posts without it.
+
+```sh
+curl -c jar -X POST http://localhost:8788/signup \
+  -H 'Origin: http://localhost:8788' \
+  --data-urlencode 'handle=someone' \
+  --data-urlencode 'cf-turnstile-response=XXXX.DUMMY.TOKEN.XXXX'
+```
+
+The response prints the account number once. Log in with it, separators and all:
+
+```sh
+curl -c jar -X POST http://localhost:8788/login \
+  -H 'Origin: http://localhost:8788' \
+  --data-urlencode 'number=1234 5678 9012 3456'
+```
+
+To act as different clients, set the header the edge would normally add:
+
+```sh
+curl -X POST http://localhost:8788/login -H 'Origin: http://localhost:8788' \
+  -H 'CF-Connecting-IP: 10.0.0.7' --data-urlencode 'number=0000000000000000'
+```
+
+The first attempt from any client is unchallenged on purpose. After that a challenge is required, so include `cf-turnstile-response` on every later attempt.
 
 `npm run check` typechecks, `npm test` runs vitest.
 

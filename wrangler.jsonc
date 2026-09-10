@@ -9,6 +9,11 @@
 	"observability": {
 		"enabled": true
 	},
+	// 8787 is wrangler's default and collides with plenty of other local tooling.
+	// Override for a single run with `wrangler dev --port <n>`.
+	"dev": {
+		"port": 8788
+	},
 	"d1_databases": [
 		{
 			"binding": "DB",
