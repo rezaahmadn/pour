@@ -99,3 +99,61 @@ export function loginPost(
   if (opts.token !== undefined) fields["cf-turnstile-response"] = opts.token;
   return formPost(fields, { ip: opts.ip });
 }
+
+/**
+ * A signed-up account that is allowed to publish. Accounts under ten minutes old
+ * cannot post, so the row is backdated rather than making tests wait.
+ */
+export async function publisher(handle: string): Promise<{ cookie: string; id: string }> {
+  const { cookie } = await signup(handle);
+  const row = await env.DB.prepare("SELECT id FROM users WHERE handle = ?")
+    .bind(handle)
+    .first<{ id: string }>();
+  if (!row) throw new Error(`no user row for ${handle}`);
+  await env.DB.prepare("UPDATE users SET created_at = ? WHERE id = ?")
+    .bind(Math.floor(Date.now() / 1000) - 3600, row.id)
+    .run();
+  return { cookie, id: row.id };
+}
+
+/** Publishes and returns the new post id, taken from the redirect. */
+export async function publish(
+  cookie: string,
+  body: string,
+  tags = "",
+): Promise<{ status: number; id: string | null; res: Response }> {
+  const res = await app.request(`${ORIGIN}/write`, formPost({ body, tags }, { cookie }), env);
+  const location = res.headers.get("location") ?? "";
+  const m = /^\/p\/(.+)$/.exec(location);
+  return { status: res.status, id: m ? m[1] : null, res };
+}
+
+/** Moves this account's posts into the past so the one-a-minute limit lets go. */
+export async function clearPostCooldown(userId: string): Promise<void> {
+  await env.DB.prepare("UPDATE posts SET created_at = created_at - 7200 WHERE user_id = ?")
+    .bind(userId)
+    .run();
+}
+
+/**
+ * Walks the chain from genesis and returns the hashes in order. Throws if a post
+ * is unreachable, which is what a fork would look like.
+ */
+export async function walkChain(): Promise<string[]> {
+  const { results } = await env.DB.prepare("SELECT hash, prev_hash FROM posts").all<{
+    hash: string;
+    prev_hash: string;
+  }>();
+  const byParent = new Map(results.map((r) => [r.prev_hash, r.hash]));
+  const order: string[] = [];
+  let cursor = "0".repeat(64);
+  while (byParent.has(cursor)) {
+    const next = byParent.get(cursor)!;
+    order.push(next);
+    cursor = next;
+  }
+  if (order.length !== results.length) {
+    throw new Error(`chain reaches ${order.length} of ${results.length} posts`);
+  }
+  return order;
+}

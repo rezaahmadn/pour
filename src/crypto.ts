@@ -19,6 +19,12 @@ export async function hmacHex(secret: string, message: string): Promise<string> 
   return toHex(new Uint8Array(sig));
 }
 
+/** SHA-256 of a string as lowercase hex. Used for the post chain, which has no secret. */
+export async function sha256Hex(message: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(message));
+  return toHex(new Uint8Array(digest));
+}
+
 export function randomHex(bytes: number): string {
   return toHex(crypto.getRandomValues(new Uint8Array(bytes)));
 }

@@ -219,3 +219,134 @@ button:hover {
   color: var(--muted);
   font-size: 0.95rem;
 }
+
+/* Editor */
+
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: var(--s1);
+  padding: var(--s2);
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+textarea:focus {
+  border-color: var(--accent);
+}
+
+/* Timeline */
+
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline > li {
+  padding-bottom: var(--s4);
+  margin-bottom: var(--s4);
+  border-bottom: 1px solid var(--line);
+}
+
+.timeline > li:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.excerpt {
+  margin: 0;
+}
+
+.excerpt a {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.excerpt a:hover {
+  color: var(--accent);
+}
+
+.meta {
+  margin: 0 0 var(--s1);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.meta a {
+  color: var(--muted);
+}
+
+.tags {
+  margin-left: var(--s1);
+}
+
+.tag {
+  margin-right: var(--s1);
+  color: var(--accent);
+}
+
+/* A rendered post */
+
+.post {
+  overflow-wrap: break-word;
+}
+
+.post > :first-child {
+  margin-top: 0;
+}
+
+.post > :last-child {
+  margin-bottom: 0;
+}
+
+.post h1,
+.post h2,
+.post h3 {
+  margin: var(--s4) 0 var(--s2);
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.post pre {
+  padding: var(--s2);
+  overflow-x: auto;
+  background: var(--wash);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.post code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+.post blockquote {
+  margin: var(--s3) 0;
+  padding-left: var(--s3);
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+}
+
+.post img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+}
+
+.post ul,
+.post ol {
+  padding-left: var(--s3);
+}
+
+.post hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--s4) 0;
+}

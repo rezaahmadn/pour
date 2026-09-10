@@ -6,6 +6,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AppEnv, User } from "../env";
 import { hmacHex, nowSec, randomDigits } from "../crypto";
 import { NUMBER_LENGTH, formatNumber, normalizeHandle, normalizeNumber } from "../account";
+import { isUniqueViolation } from "../post";
 import { verifyTurnstile } from "../turnstile";
 import {
   SESSION_COOKIE,
@@ -208,7 +209,7 @@ authRoutes.post("/signup", formLimit, async (c) => {
     // Two signups raced on the same handle and the UNIQUE index rejected this one.
     // Matched on the column so a collision on number_hmac or a session id is not
     // reported as a taken handle; those are re-thrown as a 500 instead of hidden.
-    if (String(err).includes("users.handle")) {
+    if (isUniqueViolation(err, "users.handle")) {
       // Give the daily slot back. It was claimed before the insert, and without
       // this a handful of simultaneous submissions of one handle would burn a
       // client's whole allowance for the day while creating a single account.

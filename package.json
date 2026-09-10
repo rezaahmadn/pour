@@ -14,7 +14,8 @@
     "types": "wrangler types"
   },
   "dependencies": {
-    "hono": "^4"
+    "hono": "^4",
+    "micromark": "^4.0.2"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.1.6",

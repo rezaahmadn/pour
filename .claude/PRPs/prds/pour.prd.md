@@ -181,8 +181,8 @@ Decided up front because signup is open and anonymous.
 |---|-------|-------------|--------|----------|---------|----------|
 | 1 | Scaffold and deploy | Hono + D1 worker, schema, CI deploy to workers.dev, hello-world timeline | complete | - | - | shipped in commit e1e4666, live at https://pour.rezaahmadn.workers.dev |
 | 2 | Account-number auth | Generate number, handle, HMAC storage, sessions, login/logout, Turnstile, rate limits | complete | - | 1 | `.claude/PRPs/plans/completed/account-number-auth.plan.md` |
-| 3 | Write and publish | Editor page, markdown render, tags, hash-chain insert, post page | pending | with 4 | 2 | - |
-| 4 | Design system | Bear-inspired CSS, typography, layout, dark mode, mobile-first | pending | with 3 | 1 | - |
+| 3 | Write and publish | Editor page, markdown render, tags, hash-chain insert, post page | complete | with 4 | 2 | `.claude/PRPs/plans/completed/write-and-publish.plan.md` |
+| 4 | Design system | Bear-inspired CSS, typography, layout, dark mode, mobile-first | partial | with 3 | 1 | Palette, spacing scale, dark mode, forms and layout shell shipped in commit 00db4f0. Editor styling and the Lighthouse pass remain |
 | 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | pending | - | 3 | - |
 | 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | pending | with 7 | 3, 4 | - |
 | 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | pending | with 6 | 3 | - |
@@ -277,6 +277,8 @@ Conventions every implementation plan for this repo follows. Written so a smalle
 | Images | R2 with client-side re-encode | No images, Cloudflare Images | User wants images; R2 is free with zero egress; canvas re-encode strips EXIF for free |
 | Spam | Turnstile + rate limits + freeze + `SIGNUP_OPEN` flag | Invite-only, proof-of-work, manual approval | All free, no user friction for humans, reversible |
 | Number length | 16 digits | 20 digits | User choice; about 53 bits, adequate with rate limiting and HMAC pepper |
+| Markdown renderer | micromark, no separate sanitizer | markdown-it, marked, plus a sanitizer | Escapes raw HTML and drops dangerous protocols at its safe defaults, so there is no sanitizer to misconfigure. Also the smallest of the three by a wide margin, which matters for Worker startup |
+| Chain fork prevention | UNIQUE index on `posts.prev_hash` | Read the head then insert; a lock row | SQLite has no sha256, so the hash must be computed in JS, which makes read-then-insert a race. A unique parent makes a fork impossible to store at all, and the loser simply retries |
 | Login challenge | Turnstile after the client's first failure | Turnstile on every login; none at all | Never challenging leaves guessing through rotating addresses cheap. Always challenging makes a third-party widget a single point of failure for accounts that cannot be recovered |
 | Lock escalation | Doubling, 15 min to 24 h ceiling | Flat 15 min | A flat lock that resets its counter hands one client 5 fresh guesses every 15 minutes forever |
 | Login throttle key | Client IP (HMAC'd) | Per account number | A per-number counter never fires against enumeration, since each guess is a new key, and it grows the table by one row per guess. Corrected during phase 2 implementation; see migration `0003_login_lockout_by_client.sql` |
