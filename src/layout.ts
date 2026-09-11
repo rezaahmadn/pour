@@ -1,8 +1,11 @@
-import { html } from "hono/html";
+import { html, raw } from "hono/html";
+import { STYLES } from "./styles";
 import type { User } from "./env";
 
 type PageOptions = {
   title: string;
+  /** One line for search results and link previews. Falls back to the site's own. */
+  description?: string;
   user: User | null;
   /** Extra tags for <head>, e.g. the Turnstile script. */
   head?: unknown;
@@ -22,7 +25,11 @@ export function page(opts: PageOptions) {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>${opts.title}</title>
-        <link rel="stylesheet" href="/style.css" />
+        <meta
+          name="description"
+          content="${opts.description ?? "A quiet place to write anything. Public, anonymous, append-only."}"
+        />
+        <style>${raw(STYLES)}</style>
         ${opts.head ?? ""}
       </head>
       <body>

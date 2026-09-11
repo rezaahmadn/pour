@@ -152,6 +152,7 @@ timelineRoutes.get("/:at{@[A-Za-z0-9_]+}", async (c) => {
   return c.html(
     page({
       title: `@${handle} on pour`,
+      description: `Everything @${handle} has published on pour.`,
       user: c.get("user"),
       head: html`<link
         rel="alternate"
@@ -173,6 +174,7 @@ timelineRoutes.get("/tag/:tag", async (c) => {
   return c.html(
     page({
       title: `#${tag} on pour`,
+      description: `Everything tagged #${tag} on pour.`,
       user: c.get("user"),
       head: html`<link
         rel="alternate"

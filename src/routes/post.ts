@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { html, raw } from "hono/html";
 import type { AppEnv } from "../env";
+import { excerptOf } from "../post";
 import { renderMarkdown } from "../markdown";
 import { page } from "../layout";
 
@@ -82,6 +83,7 @@ postRoutes.get("/p/:id", async (c) => {
   return c.html(
     page({
       title: `@${row.handle} on pour`,
+      description: excerptOf(row.body, 150),
       user: c.get("user"),
       body: html`${postMeta(row, tags)}
         <article class="post">${raw(renderMarkdown(row.body))}</article>`,

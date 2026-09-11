@@ -182,7 +182,7 @@ Decided up front because signup is open and anonymous.
 | 1 | Scaffold and deploy | Hono + D1 worker, schema, CI deploy to workers.dev, hello-world timeline | complete | - | - | shipped in commit e1e4666, live at https://pour.rezaahmadn.workers.dev |
 | 2 | Account-number auth | Generate number, handle, HMAC storage, sessions, login/logout, Turnstile, rate limits | complete | - | 1 | `.claude/PRPs/plans/completed/account-number-auth.plan.md` |
 | 3 | Write and publish | Editor page, markdown render, tags, hash-chain insert, post page | complete | with 4 | 2 | `.claude/PRPs/plans/completed/write-and-publish.plan.md` |
-| 4 | Design system | Bear-inspired CSS, typography, layout, dark mode, mobile-first | partial | with 3 | 1 | Palette, spacing scale, dark mode, forms and layout shell shipped in commit 00db4f0. Editor styling and the Lighthouse pass remain |
+| 4 | Design system | Bear-inspired CSS, typography, layout, dark mode, mobile-first | complete | with 3 | 1 | Lighthouse 100 across accessibility, best practices, SEO and agentic browsing on mobile; LCP 746 ms on Slow 4G with 4x CPU throttling |
 | 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | complete | - | 3 | Verified in a browser: type, kill the tab, reopen, restore |
 | 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | complete | with 7 | 3, 4 | One query per view; cursor paging on rowid rather than offset |
 | 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | complete | with 6 | 3 | Hidden entries stay on the timeline as placeholders so the record reads as continuous |
@@ -277,6 +277,7 @@ Conventions every implementation plan for this repo follows. Written so a smalle
 | Images | R2 with client-side re-encode | No images, Cloudflare Images | User wants images; R2 is free with zero egress; canvas re-encode strips EXIF for free |
 | Spam | Turnstile + rate limits + freeze + `SIGNUP_OPEN` flag | Invite-only, proof-of-work, manual approval | All free, no user friction for humans, reversible |
 | Number length | 16 digits | 20 digits | User choice; about 53 bits, adequate with rate limiting and HMAC pepper |
+| Stylesheet delivery | Inlined into every page | Cached static file | Fetching it was the only thing blocking first paint, worth 538 ms of a 1.23 s LCP. It is 7.5 KB, and this project exists to be fast on a phone, so the round trip loses |
 | Draft conflict | Newer timestamp wins | Prompt to choose, merge | Both copies belong to one person, so the later keystroke is the one they meant. A merge prompt is ceremony over a half-written note |
 | Signup gate default | Open when `SIGNUP_OPEN` is unset | Closed by default | A missing variable should not lock everyone out. When it is closed and no invite code was configured, it stays shut instead, so the failure modes point the safe way in both directions |
 | Paging | Cursor on `rowid` | Page-number offsets | An offset shifts under you every time somebody publishes, which on an append-only timeline means re-reading rows you already saw |

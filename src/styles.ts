@@ -1,4 +1,12 @@
-/* pour. Text first, one accent, system fonts, mobile first.
+/**
+ * The stylesheet, inlined into every page rather than fetched.
+ *
+ * It is small, and a separate request for it was the one thing blocking first
+ * paint: a Slow 4G trace put 538 ms of a 1.23 s LCP on that round trip. This
+ * project exists to be fast on a phone, so the round trip loses. Kept here as
+ * one source of truth rather than duplicated as a static file.
+ */
+export const STYLES = `/* pour. Text first, one accent, system fonts, mobile first.
    Everything is driven off one spacing scale so gaps stay consistent. */
 
 :root {
@@ -456,3 +464,4 @@ a.tag:hover {
 .pager + .note {
   margin-top: var(--s4);
 }
+`;
