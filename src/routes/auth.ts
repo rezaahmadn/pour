@@ -17,6 +17,11 @@ import {
 } from "../auth";
 import { page } from "../layout";
 
+/** Signup is open unless the environment says otherwise, so a missing var fails open. */
+export function signupIsOpen(env: { SIGNUP_OPEN?: string }): boolean {
+  return (env.SIGNUP_OPEN ?? "true").toLowerCase() !== "false";
+}
+
 export const SIGNUPS_PER_IP_PER_DAY = 3;
 export const MAX_LOGIN_FAILURES = 5;
 export const LOCKOUT_SEC = 15 * 60;
@@ -26,9 +31,12 @@ export const MAX_LOCKOUT_SEC = 24 * 60 * 60;
 const turnstileHead = html`<link rel="preconnect" href="https://challenges.cloudflare.com" />
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>`;
 
-function signupForm(siteKey: string, error: string | null, handle = "") {
+function signupForm(siteKey: string, error: string | null, handle = "", invite = false) {
   return html`<h1>Get an account number</h1>
     <p>No email, no password. You get a 16-digit number. Keep it: it cannot be recovered.</p>
+    ${invite
+      ? html`<p class="note">Signup is closed right now. You need an invite code to join.</p>`
+      : ""}
     ${error ? html`<p class="error">${error}</p>` : ""}
     <form method="post" action="/signup">
       <label>
@@ -44,6 +52,12 @@ function signupForm(siteKey: string, error: string | null, handle = "") {
           value="${handle}"
         />
       </label>
+      ${invite
+        ? html`<label>
+            invite code
+            <input name="invite" required autocapitalize="none" autocomplete="off" />
+          </label>`
+        : ""}
       <div class="cf-turnstile" data-sitekey="${siteKey}" data-size="flexible"></div>
       <button type="submit">Get my number</button>
     </form>
@@ -133,7 +147,7 @@ authRoutes.get("/signup", (c) => {
       title: "Get a number",
       user: null,
       head: turnstileHead,
-      body: signupForm(c.env.TURNSTILE_SITE_KEY, null),
+      body: signupForm(c.env.TURNSTILE_SITE_KEY, null, "", !signupIsOpen(c.env)),
     }),
   );
 });
@@ -151,10 +165,20 @@ authRoutes.post("/signup", formLimit, async (c) => {
         title: "Get a number",
         user: null,
         head: turnstileHead,
-        body: signupForm(c.env.TURNSTILE_SITE_KEY, message, rawHandle),
+        body: signupForm(c.env.TURNSTILE_SITE_KEY, message, rawHandle, !signupIsOpen(c.env)),
       }),
       status,
     );
+
+  // Checked before anything costly. A closed door should not spend a Turnstile
+  // token or a database read.
+  if (!signupIsOpen(c.env)) {
+    const invite = typeof form.invite === "string" ? form.invite : "";
+    const expected = c.env.INVITE_CODE ?? "";
+    if (!expected || invite !== expected) {
+      return fail(403, "That invite code is not right.");
+    }
+  }
 
   const handle = normalizeHandle(rawHandle);
   if (!handle) {

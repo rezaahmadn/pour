@@ -23,10 +23,24 @@ export const POSTS_PER_DAY = 50;
 /** Retries when another publish claimed the same parent first. */
 export const CHAIN_ATTEMPTS = 5;
 
-function editor(user: User, error: string | null, body = "", tags = "") {
+function editor(
+  user: User,
+  error: string | null,
+  body = "",
+  tags = "",
+  saved: ServerDraft | null = null,
+) {
   return html`<h1>write</h1>
     ${error ? html`<p class="error">${error}</p>` : ""}
-    <form method="post" action="/write" data-autosave>
+    <form
+      method="post"
+      action="/write"
+      data-autosave
+      data-sync-ms="${DRAFT_SYNC_MS}"
+      data-saved-body="${saved?.body ?? ""}"
+      data-saved-tags="${saved?.tags ?? ""}"
+      data-saved-at="${saved ? String(saved.updated_at * 1000) : ""}"
+    >
       <label>
         your post
         <textarea name="body" rows="14" required autofocus>${body}</textarea>
@@ -46,11 +60,60 @@ function editor(user: User, error: string | null, body = "", tags = "") {
 /** Draft autosave. Only the editor loads it; every other page stays script free. */
 const editorHead = html`<script src="/editor.js" defer></script>`;
 
+/** A draft body can be as long as a post, so this matches the publish limit. */
+const draftLimit = bodyLimit({
+  maxSize: MAX_BODY_BYTES + 64 * 1024,
+  onError: (c) => c.text("Draft too large", 413),
+});
+
+export type ServerDraft = { body: string; tags: string; updated_at: number };
+
+/** How often the editor pushes a copy to the server, per the PRD. */
+export const DRAFT_SYNC_MS = 5000;
+
 export const writeRoutes = new Hono<AppEnv>();
 
-writeRoutes.get("/write", requireAuth, (c) => {
+writeRoutes.get("/write", requireAuth, async (c) => {
   const user = c.get("user")!;
-  return c.html(page({ title: "write", user, head: editorHead, body: editor(user, null) }));
+  // Handed to the page rather than fetched by script, so the editor has both
+  // copies before the first paint and never briefly shows the wrong one.
+  const saved = await c.env.DB.prepare(
+    "SELECT body, tags, updated_at FROM drafts WHERE user_id = ?",
+  )
+    .bind(user.id)
+    .first<ServerDraft>();
+  return c.html(
+    page({ title: "write", user, head: editorHead, body: editor(user, null, "", "", saved) }),
+  );
+});
+
+/**
+ * The editor pushes a copy here on a timer so a draft begun on a phone can be
+ * picked up on a laptop. Last write wins, which is the right rule when both
+ * copies belong to the same person: the newer keystroke is the one they meant.
+ */
+writeRoutes.post("/draft", requireAuth, draftLimit, async (c) => {
+  const user = c.get("user")!;
+  const form = await c.req.parseBody();
+  const body = typeof form.body === "string" ? form.body : "";
+  const tags = typeof form.tags === "string" ? form.tags : "";
+  const now = nowSec();
+
+  if (!body.trim()) {
+    await c.env.DB.prepare("DELETE FROM drafts WHERE user_id = ?").bind(user.id).run();
+    return c.json({ cleared: true, updatedAt: null });
+  }
+  if (new TextEncoder().encode(body).length > MAX_BODY_BYTES) {
+    return c.json({ error: "too long" }, 400);
+  }
+  await c.env.DB.prepare(
+    "INSERT INTO drafts (user_id, body, tags, updated_at) VALUES (?, ?, ?, ?) " +
+      "ON CONFLICT(user_id) DO UPDATE SET body = excluded.body, tags = excluded.tags, " +
+      "updated_at = excluded.updated_at",
+  )
+    .bind(user.id, body, tags, now)
+    .run();
+  return c.json({ cleared: false, updatedAt: now * 1000 });
 });
 
 writeRoutes.post(
@@ -70,7 +133,7 @@ writeRoutes.post(
           title: "write",
           user,
           head: editorHead,
-          body: editor(user, message, rawBody, rawTags),
+          body: editor(user, message, rawBody, rawTags, null),
         }),
         status,
       );
@@ -126,6 +189,7 @@ writeRoutes.post(
             c.env.DB.prepare("INSERT INTO tags (post_id, tag) VALUES (?, ?)").bind(id, tag),
           ),
         ]);
+        await c.env.DB.prepare("DELETE FROM drafts WHERE user_id = ?").bind(user.id).run();
         return c.redirect(`/p/${id}`);
       } catch (err) {
         // Someone else took this parent. Anything else is a real failure.

@@ -16,6 +16,14 @@
 
   var KEY = "pour.draft.v1";
   var DEBOUNCE_MS = 400;
+  var SYNC_MS = Number(form.dataset.syncMs || 5000);
+
+  // The server's copy, handed over with the page so both are in hand before the
+  // first paint. It is what makes a draft begun on a phone reachable on a laptop.
+  var savedAt = Number(form.dataset.savedAt || 0);
+  var serverDraft = savedAt
+    ? { body: form.dataset.savedBody || "", tags: form.dataset.savedTags || "", at: savedAt }
+    : null;
 
   // iOS Safari in private mode throws on setItem rather than failing quietly, so
   // probe once and fall back to memory. Memory still survives a background and a
@@ -143,7 +151,12 @@
     form.parentNode.insertBefore(banner, form);
   }
 
-  var saved = read();
+  // Whichever copy is newer is the one to offer. Both belong to the same person,
+  // so the later keystroke is the one they meant.
+  var local = read();
+  var saved = local;
+  if (serverDraft && (!local || serverDraft.at > local.at)) saved = serverDraft;
+
   if (saved && saved.body && saved.body.trim() && !body.value.trim()) {
     awaitingChoice = true;
     offerRestore(saved);
@@ -160,6 +173,31 @@
     awaitingChoice = false;
     schedule();
   });
+
+  // Pushing to the server is deliberately slower and separate from the local
+  // save. Local keeps the words safe on this device; this makes them reachable
+  // from another one, and a failure here must never look like data loss.
+  var lastPushed = null;
+  function push() {
+    if (handedOff || awaitingChoice) return;
+    var snapshot = body.value;
+    if (snapshot === lastPushed) return;
+    lastPushed = snapshot;
+    var payload = new URLSearchParams();
+    payload.set("body", snapshot);
+    payload.set("tags", tags ? tags.value : "");
+    fetch("/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: payload.toString(),
+      credentials: "same-origin",
+    }).catch(function () {
+      // Offline, most likely. The local copy is still there, so say nothing and
+      // let the next tick try again.
+      lastPushed = null;
+    });
+  }
+  setInterval(push, SYNC_MS);
   if (tags) tags.addEventListener("input", schedule);
 
   // A backgrounded tab may never get another event, so write immediately rather
@@ -167,7 +205,10 @@
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") save();
   });
-  window.addEventListener("pagehide", save);
+  window.addEventListener("pagehide", function () {
+    save();
+    push();
+  });
 
   // On success the browser leaves for the new post. On failure the server hands
   // the text back and the load path above saves it again.

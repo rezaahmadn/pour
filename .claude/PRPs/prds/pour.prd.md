@@ -187,7 +187,7 @@ Decided up front because signup is open and anonymous.
 | 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | complete | with 7 | 3, 4 | One query per view; cursor paging on rowid rather than offset |
 | 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | complete | with 6 | 3 | Hidden entries stay on the timeline as placeholders so the record reads as continuous |
 | 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | pending | - | 3, 7 | - |
-| 8 | Server drafts and polish | Drafts table sync, passkey (optional), `SIGNUP_OPEN` flag | pending | with 9 | 5, 6, 7 | - |
+| 8 | Server drafts and polish | Drafts table sync, passkey (optional), `SIGNUP_OPEN` flag | complete | with 9 | 5, 6, 7 | Passkey left out; it is a Could item and the number already works |
 
 ### Phase Details
 
@@ -277,6 +277,8 @@ Conventions every implementation plan for this repo follows. Written so a smalle
 | Images | R2 with client-side re-encode | No images, Cloudflare Images | User wants images; R2 is free with zero egress; canvas re-encode strips EXIF for free |
 | Spam | Turnstile + rate limits + freeze + `SIGNUP_OPEN` flag | Invite-only, proof-of-work, manual approval | All free, no user friction for humans, reversible |
 | Number length | 16 digits | 20 digits | User choice; about 53 bits, adequate with rate limiting and HMAC pepper |
+| Draft conflict | Newer timestamp wins | Prompt to choose, merge | Both copies belong to one person, so the later keystroke is the one they meant. A merge prompt is ceremony over a half-written note |
+| Signup gate default | Open when `SIGNUP_OPEN` is unset | Closed by default | A missing variable should not lock everyone out. When it is closed and no invite code was configured, it stays shut instead, so the failure modes point the safe way in both directions |
 | Paging | Cursor on `rowid` | Page-number offsets | An offset shifts under you every time somebody publishes, which on an append-only timeline means re-reading rows you already saw |
 | Hidden posts in filtered views | Placeholder on the global timeline, omitted from handle and tag pages and from feeds | Placeholder everywhere | On a page already filtered to one author or tag, a placeholder announces that this person or subject in particular had something taken down |
 | Truncation | Stated as a known gap on `/verify` | Silently claim full tamper evidence | A chain read only from inside itself cannot prove entries were not cut from the end. The daily external anchor in the Could list is what would close it |

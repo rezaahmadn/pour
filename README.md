@@ -92,6 +92,10 @@ Every push to `main` runs checks, applies D1 migrations, and deploys. Until the 
 
    Set `PEPPER` once and never rotate it: it keys the HMAC of every account number, so changing it locks every existing account out permanently.
 
+   `INVITE_CODE` is only needed if you close signup. Set it **before** flipping
+   `SIGNUP_OPEN` to `"false"` in `wrangler.jsonc`: with the gate closed and no code
+   configured, nobody can join at all, which is deliberate but will surprise you.
+
    `TURNSTILE_SECRET` comes from a Turnstile widget. In the Cloudflare dashboard go to Turnstile, add a widget for hostname `pour.<your-subdomain>.workers.dev` in Managed mode, then paste its **site key** into `vars.TURNSTILE_SITE_KEY` in `wrangler.jsonc` (that key is public) and its **secret key** into the secret above. Until you do, `wrangler.jsonc` ships Cloudflare's always-pass test site key, which real secrets reject, so signup fails in production.
 
 3. Create an API token at https://dash.cloudflare.com/profile/api-tokens using the **Edit Cloudflare Workers** template, and add D1 Edit permission. Find your account ID on the Workers overview page.

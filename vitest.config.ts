@@ -17,6 +17,8 @@ export default defineConfig(async () => {
             // Pinned here rather than left to .dev.vars, which CI does not have.
             // The admin tests need a known handle in every environment.
             ADMIN_HANDLE: "test_admin",
+            SIGNUP_OPEN: "true",
+            INVITE_CODE: "test-invite",
           },
         },
       }),

@@ -6,5 +6,7 @@ declare namespace Cloudflare {
     TURNSTILE_SECRET: string;
     TURNSTILE_SITE_KEY: string;
     ADMIN_HANDLE: string;
+    SIGNUP_OPEN: string;
+    INVITE_CODE: string;
   }
 }
