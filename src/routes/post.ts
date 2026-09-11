@@ -23,9 +23,11 @@ export function postMeta(row: PostRow, tags: string[]) {
     <a href="/p/${row.id}"><time datetime="${new Date(row.created_at * 1000).toISOString()}"
         >${formatDate(row.created_at)}</time
       ></a>
-    by @${row.handle}
+    by <a href="/@${row.handle}">@${row.handle}</a>
     ${tags.length
-      ? html`<span class="tags">${tags.map((t) => html`<span class="tag">#${t}</span>`)}</span>`
+      ? html`<span class="tags"
+          >${tags.map((t) => html`<a class="tag" href="/tag/${t}">#${t}</a>`)}</span
+        >`
       : ""}
   </p>`;
 }

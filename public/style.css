@@ -430,3 +430,29 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.88em;
 }
+
+/* Paging and tag links */
+
+.pager {
+  margin-top: var(--s4);
+}
+
+a.tag {
+  text-decoration: none;
+}
+
+a.tag:hover {
+  text-decoration: underline;
+}
+
+/* .meta a is more specific than a.tag, so name both to keep tags on the accent. */
+.meta a.tag {
+  color: var(--accent);
+}
+
+/* Anything after a list needs its own air, since the last row drops its margin. */
+.timeline + .note,
+.timeline + .pager,
+.pager + .note {
+  margin-top: var(--s4);
+}
