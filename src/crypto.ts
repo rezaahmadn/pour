@@ -25,6 +25,12 @@ export async function sha256Hex(message: string): Promise<string> {
   return toHex(new Uint8Array(digest));
 }
 
+/** SHA-256 of raw bytes. Used for image contents, which are not text. */
+export async function sha256HexOfBytes(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return toHex(new Uint8Array(digest));
+}
+
 export function randomHex(bytes: number): string {
   return toHex(crypto.getRandomValues(new Uint8Array(bytes)));
 }

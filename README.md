@@ -111,6 +111,22 @@ Every push to `main` runs checks, applies D1 migrations, and deploys. Until the 
 
 Alternative with zero GitHub secrets: connect the repo under Workers & Pages > Create > Import a repository in the Cloudflare dashboard. Cloudflare then builds and deploys on push itself. Keep the workflow for checks either way.
 
+## Images
+
+Pictures need an R2 bucket, and R2 has to be switched on for the account once, by
+hand, at Cloudflare dashboard > R2. It is free to enable and the free tier covers
+10 GB with no egress charge, but a deploy fails until the bucket exists:
+
+```sh
+npx wrangler r2 bucket create pour-images
+```
+
+The browser resizes every picture to 2000 px on the long edge and re-encodes it
+through a canvas before upload. That is what removes EXIF, including the GPS
+coordinates a phone writes into a photo. The server only accepts formats a canvas
+produces and checks the magic bytes, so a file that skipped that step is refused
+rather than stored with its location intact.
+
 ## License
 
 MIT

@@ -30,6 +30,12 @@
 		// secret, which is a config change and a redeploy, not a code change.
 		"SIGNUP_OPEN": "true"
 	},
+	"r2_buckets": [
+		{
+			"binding": "IMAGES",
+			"bucket_name": "pour-images"
+		}
+	],
 	// Workers Rate Limiting bindings. Counters are per Cloudflare location, eventually consistent.
 	"ratelimits": [
 		{ "name": "LOGIN_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },

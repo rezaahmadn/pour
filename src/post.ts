@@ -15,8 +15,12 @@ export function computeHash(
   userId: string,
   body: string,
   createdAt: number,
+  imageHashes: string[] = [],
 ): Promise<string> {
-  return sha256Hex(`${prevHash}${userId}${body}${createdAt}`);
+  // Image digests are appended rather than mixed in, so a post carrying no
+  // pictures hashes to exactly what it did before images existed. That keeps
+  // every entry already in the chain verifiable.
+  return sha256Hex(`${prevHash}${userId}${body}${createdAt}${imageHashes.join("")}`);
 }
 
 /** Trims trailing whitespace and rejects an empty or oversized body. */

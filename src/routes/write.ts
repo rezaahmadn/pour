@@ -49,6 +49,11 @@ function editor(
         tags, comma separated, up to ${MAX_TAGS}
         <input name="tags" autocapitalize="none" autocomplete="off" value="${tags}" />
       </label>
+      <label class="picker">
+        add a picture
+        <input id="image-file" type="file" accept="image/*" />
+      </label>
+      <p class="note"><span id="image-status"></span></p>
       <button type="submit">Publish</button>
     </form>
     <p class="note"><span id="draft-status"></span></p>
@@ -169,6 +174,16 @@ writeRoutes.post(
       return fail(429, `That is ${POSTS_PER_DAY} posts today. Come back tomorrow.`);
     }
 
+    // Whatever this writer uploaded while composing becomes part of this post.
+    // Ordered by upload time so the digest list is deterministic, which matters
+    // because it goes into the hash.
+    const { results: pendingImages } = await c.env.DB.prepare(
+      "SELECT id, sha256 FROM images WHERE user_id = ? AND post_id IS NULL ORDER BY created_at, id",
+    )
+      .bind(user.id)
+      .all<{ id: string; sha256: string }>();
+    const imageHashes = pendingImages.map((i) => i.sha256);
+
     // Append to the chain. The unique index on prev_hash means a publish that
     // raced another one simply fails to insert, so it re-reads the head and tries
     // again rather than creating a second branch.
@@ -178,7 +193,7 @@ writeRoutes.post(
       const prevHash = head?.hash ?? GENESIS_HASH;
       const id = crypto.randomUUID();
       const createdAt = nowSec();
-      const hash = await computeHash(prevHash, user.id, parsedBody.body, createdAt);
+      const hash = await computeHash(prevHash, user.id, parsedBody.body, createdAt, imageHashes);
       try {
         await c.env.DB.batch([
           c.env.DB.prepare(
@@ -187,6 +202,9 @@ writeRoutes.post(
           ).bind(id, user.id, parsedBody.body, createdAt, prevHash, hash),
           ...parsedTags.tags.map((tag) =>
             c.env.DB.prepare("INSERT INTO tags (post_id, tag) VALUES (?, ?)").bind(id, tag),
+          ),
+          ...pendingImages.map((img) =>
+            c.env.DB.prepare("UPDATE images SET post_id = ? WHERE id = ?").bind(id, img.id),
           ),
         ]);
         await c.env.DB.prepare("DELETE FROM drafts WHERE user_id = ?").bind(user.id).run();

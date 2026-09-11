@@ -7,6 +7,7 @@ import { page } from "./layout";
 import { authRoutes } from "./routes/auth";
 import { adminRoutes } from "./routes/admin";
 import { feedRoutes } from "./routes/feeds";
+import { imageRoutes } from "./routes/images";
 import { timelineRoutes } from "./routes/timeline";
 import { postRoutes } from "./routes/post";
 import { verifyRoutes } from "./routes/verify";
@@ -43,6 +44,7 @@ app.route("/", feedRoutes);
 app.route("/", authRoutes);
 app.route("/", writeRoutes);
 app.route("/", postRoutes);
+app.route("/", imageRoutes);
 app.route("/", verifyRoutes);
 app.route("/", adminRoutes);
 

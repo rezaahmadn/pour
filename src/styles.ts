@@ -464,4 +464,15 @@ a.tag:hover {
 .pager + .note {
   margin-top: var(--s4);
 }
+
+/* Picture picker */
+
+.picker {
+  margin-bottom: var(--s2);
+}
+
+.picker input[type="file"] {
+  border: 0;
+  padding-left: 0;
+}
 `;

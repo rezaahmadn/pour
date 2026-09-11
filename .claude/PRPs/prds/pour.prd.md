@@ -186,7 +186,7 @@ Decided up front because signup is open and anonymous.
 | 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | complete | - | 3 | Verified in a browser: type, kill the tab, reopen, restore |
 | 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | complete | with 7 | 3, 4 | One query per view; cursor paging on rowid rather than offset |
 | 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | complete | with 6 | 3 | Hidden entries stay on the timeline as placeholders so the record reads as continuous |
-| 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | pending | - | 3, 7 | - |
+| 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | built, not deployed | - | 3, 7 | Blocked on enabling R2 in the Cloudflare dashboard, which needs a human. Verified locally against simulated R2 |
 | 8 | Server drafts and polish | Drafts table sync, passkey (optional), `SIGNUP_OPEN` flag | complete | with 9 | 5, 6, 7 | Passkey left out; it is a Could item and the number already works |
 
 ### Phase Details
@@ -277,6 +277,8 @@ Conventions every implementation plan for this repo follows. Written so a smalle
 | Images | R2 with client-side re-encode | No images, Cloudflare Images | User wants images; R2 is free with zero egress; canvas re-encode strips EXIF for free |
 | Spam | Turnstile + rate limits + freeze + `SIGNUP_OPEN` flag | Invite-only, proof-of-work, manual approval | All free, no user friction for humans, reversible |
 | Number length | 16 digits | 20 digits | User choice; about 53 bits, adequate with rate limiting and HMAC pepper |
+| Image hash placement | Appended after the post's own fields | Mixed into the existing digest | Appending means a post with no pictures hashes to exactly what it did before images existed, so every entry already in the chain stays verifiable |
+| Upload trust | Magic bytes checked, canvas formats only | Trust the declared content type | The browser re-encode is what strips EXIF, so a file arriving as HEIC skipped it and still carries its GPS. Refusing the format is what makes the promise real |
 | Stylesheet delivery | Inlined into every page | Cached static file | Fetching it was the only thing blocking first paint, worth 538 ms of a 1.23 s LCP. It is 7.5 KB, and this project exists to be fast on a phone, so the round trip loses |
 | Draft conflict | Newer timestamp wins | Prompt to choose, merge | Both copies belong to one person, so the later keystroke is the one they meant. A merge prompt is ceremony over a half-written note |
 | Signup gate default | Open when `SIGNUP_OPEN` is unset | Closed by default | A missing variable should not lock everyone out. When it is closed and no invite code was configured, it stays shut instead, so the failure modes point the safe way in both directions |

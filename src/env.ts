@@ -1,5 +1,6 @@
 export type Bindings = {
   DB: D1Database;
+  IMAGES: R2Bucket;
   PEPPER: string;
   TURNSTILE_SECRET: string;
   TURNSTILE_SITE_KEY: string;

@@ -18,6 +18,7 @@ type Row = {
   created_at: number;
   prev_hash: string;
   hash: string;
+  image_hashes: string | null;
 };
 
 /**
@@ -30,8 +31,11 @@ type Row = {
 export async function verifyChain(db: D1Database): Promise<ChainReport> {
   const { results } = await db
     .prepare(
-      "SELECT id, user_id, body, created_at, prev_hash, hash FROM posts " +
-        "ORDER BY rowid LIMIT ?",
+      "SELECT posts.id AS id, posts.user_id AS user_id, posts.body AS body, " +
+        "posts.created_at AS created_at, posts.prev_hash AS prev_hash, posts.hash AS hash, " +
+        "(SELECT group_concat(sha256) FROM (SELECT sha256 FROM images " +
+        "  WHERE images.post_id = posts.id ORDER BY created_at, id)) AS image_hashes " +
+        "FROM posts ORDER BY posts.rowid LIMIT ?",
     )
     .bind(VERIFY_LIMIT)
     .all<Row>();
@@ -53,7 +57,14 @@ export async function verifyChain(db: D1Database): Promise<ChainReport> {
   let entries = 0;
   while (byParent.has(cursor)) {
     const row = byParent.get(cursor)!;
-    const expected = await computeHash(row.prev_hash, row.user_id, row.body, row.created_at);
+    const images = row.image_hashes ? row.image_hashes.split(",") : [];
+    const expected = await computeHash(
+      row.prev_hash,
+      row.user_id,
+      row.body,
+      row.created_at,
+      images,
+    );
     if (expected !== row.hash) {
       return { ok: false, entries, problem: "An entry's contents no longer match its hash.", at: row.id };
     }

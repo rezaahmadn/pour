@@ -210,6 +210,94 @@
     push();
   });
 
+  // Pictures.
+  //
+  // The resize and re-encode happen here, in the browser, and that is the whole
+  // point: drawing a photo onto a canvas and reading it back produces a new file
+  // with none of the original's EXIF, so the GPS coordinates in a phone snapshot
+  // never leave the device. The server refuses anything that did not come through
+  // this path, which is why it only accepts canvas formats.
+  var MAX_EDGE = 2000;
+  var picker = document.getElementById("image-file");
+  var imageStatus = document.getElementById("image-status");
+
+  function sayImage(message) {
+    if (imageStatus) imageStatus.textContent = message;
+  }
+
+  function reencode(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+        var canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        var ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no canvas"));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          function (blob) {
+            if (blob) resolve(blob);
+            else reject(new Error("encode failed"));
+          },
+          "image/webp",
+          0.82,
+        );
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("not an image"));
+      };
+      img.src = url;
+    });
+  }
+
+  function insertAtCursor(text) {
+    var start = body.selectionStart;
+    var end = body.selectionEnd;
+    body.value = body.value.slice(0, start) + text + body.value.slice(end);
+    body.selectionStart = body.selectionEnd = start + text.length;
+    body.focus();
+    save();
+  }
+
+  if (picker) {
+    picker.addEventListener("change", function () {
+      var file = picker.files && picker.files[0];
+      if (!file) return;
+      sayImage("Preparing the picture\u2026");
+      reencode(file)
+        .then(function (blob) {
+          var payload = new FormData();
+          payload.append("file", new File([blob], "image.webp", { type: "image/webp" }));
+          return fetch("/upload", {
+            method: "POST",
+            body: payload,
+            credentials: "same-origin",
+          });
+        })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            if (!res.ok) throw new Error(data.error || "Upload failed.");
+            return data;
+          });
+        })
+        .then(function (data) {
+          insertAtCursor("\n\n" + data.markdown + "\n\n");
+          sayImage("Picture added. It is stripped of location data.");
+        })
+        .catch(function (err) {
+          sayImage(err.message || "That picture could not be added.");
+        })
+        .then(function () {
+          picker.value = "";
+        });
+    });
+  }
+
   // On success the browser leaves for the new post. On failure the server hands
   // the text back and the load path above saves it again.
   form.addEventListener("submit", function () {
