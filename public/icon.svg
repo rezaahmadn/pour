@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="pour">
+  <!--
+    A drop, for a site called pour.
+
+    Drawn as a solid silhouette rather than an outline because it has to survive
+    being shrunk to 16 pixels in a browser tab, where a stroke thinner than a
+    pixel disappears and the shape turns to mush.
+
+    The fill follows the page: the same terracotta in light, the lighter tint in
+    dark, so the tab does not glare against a dark theme.
+  -->
+  <style>
+    .drop { fill: #b0521d; }
+    @media (prefers-color-scheme: dark) {
+      .drop { fill: #e28b53; }
+    }
+  </style>
+  <path
+    class="drop"
+    d="M16 2.5c0 0 10.5 11.7 10.5 18.2a10.5 10.5 0 0 1-21 0C5.5 14.2 16 2.5 16 2.5z"
+  />
+</svg>

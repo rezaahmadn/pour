@@ -29,6 +29,7 @@ export function page(opts: PageOptions) {
           name="description"
           content="${opts.description ?? "A quiet place to write anything. Public, anonymous, append-only."}"
         />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <style>${raw(STYLES)}</style>
         ${opts.head ?? ""}
       </head>
