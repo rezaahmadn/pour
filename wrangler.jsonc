@@ -9,6 +9,11 @@
 	"observability": {
 		"enabled": true
 	},
+	// 8787 is wrangler's default and collides with plenty of other local tooling.
+	// Override for a single run with `wrangler dev --port <n>`.
+	"dev": {
+		"port": 8788
+	},
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -16,9 +21,43 @@
 			"database_id": "74130416-4b3e-4985-88f8-4b325d6e72a6",
 			"migrations_dir": "migrations"
 		}
+	],
+	// Public config. This is the real Turnstile widget site key for pour.rezaahmadn.workers.dev.
+	// Site keys are public by design. Local dev overrides it with a test key via .dev.vars.
+	"vars": {
+		"TURNSTILE_SITE_KEY": "0x4AAAAAAEuWB56FcmKTZlQw",
+		// Flip to "false" to close open signup. Joining then needs the INVITE_CODE
+		// secret, which is a config change and a redeploy, not a code change.
+		"SIGNUP_OPEN": "true"
+	},
+	"r2_buckets": [
+		{
+			"binding": "IMAGES",
+			"bucket_name": "pour-images"
+		}
+	],
+	// Workers Rate Limiting bindings. Counters are per Cloudflare location, eventually consistent.
+	"ratelimits": [
+		{
+			"name": "LOGIN_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		},
+		{
+			"name": "SIGNUP_LIMITER",
+			"namespace_id": "1002",
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
+		}
 	]
 	// Secrets (set with `wrangler secret put NAME`, never commit):
-	//   PEPPER            HMAC key for account numbers
+	//   PEPPER            HMAC key for account numbers and IP hashes
 	//   TURNSTILE_SECRET  Cloudflare Turnstile server key
 	//   ADMIN_HANDLE      handle treated as admin
+	//   INVITE_CODE       required to sign up while SIGNUP_OPEN is "false"
 }

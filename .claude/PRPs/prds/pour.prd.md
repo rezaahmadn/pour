@@ -119,7 +119,11 @@ Decided up front because signup is open and anonymous.
 
 - **Signup**: Cloudflare Turnstile (free, invisible for most humans) on the "get a number" form. Per-IP cap of 3 signups per day enforced in D1.
 - **Posting**: per-account limit of 1 post per minute and 50 per day. Accounts younger than 10 minutes cannot post.
-- **Login**: 5 failed attempts per number locks it for 15 minutes. Cloudflare rate limiting rule on the login path.
+- **Login**: throttled per client, not per account number. A brute-force attempt submits a different number every time, so a per-number counter would never fire and would store one row per guess.
+  - Workers rate-limit binding: 10 attempts per minute per client IP.
+  - 5 failed attempts lock the client for 15 minutes. Each further run of 5 doubles the lock, up to 24 hours. The counter is incremented inside SQL so attempts arriving together cannot overwrite each other.
+  - Once a client has any failure on record, every further attempt must solve a Turnstile challenge. The first attempt is deliberately unchallenged: an account has no recovery path, so a blocked or broken widget must never be the only thing standing between someone and their own account.
+  - A malformed number is a typo, not a guess, and does not consume an attempt.
 - **Admin**: hide any post (record stays, hash stays). Freeze any account (cannot post, existing posts remain). Freeze is the "ban"; nothing is deleted.
 - **Images**: same hide and freeze rules. Hidden post hides its images.
 - **Escape hatch**: `SIGNUP_OPEN` env flag. If spam wins, flip to closed and require an invite code. No code change.
@@ -139,13 +143,13 @@ Decided up front because signup is open and anonymous.
 
 **Architecture Notes**
 - Single Cloudflare Worker using Hono. Server-rendered HTML with `hono/html`. Static CSS and a small editor script served through the Workers static assets binding.
-- D1 (SQLite) via Drizzle. One Drizzle instance per request, created in middleware, never a module-level singleton.
+- D1 (SQLite) via raw prepared statements (`c.env.DB.prepare(sql).bind(...)`). No ORM. Drizzle was in the first draft and dropped at scaffold time: the query surface is small and one fewer dependency keeps the free-tier CPU budget. Always go through `c.env.DB` inside a handler, never a module-level singleton.
 - Tables: `users(id, handle, number_hmac, created_at)`, `sessions(id, user_id, expires_at)`, `posts(id, user_id, body, created_at, prev_hash, hash, hidden)`, `tags(post_id, tag)`, `drafts(user_id, body, tags, updated_at)`.
 - Hash chain: `hash = sha256(prev_hash || user_id || body || created_at)`. Insert happens inside a single D1 batch that reads the latest hash and writes the new row, to avoid forks under concurrent publishes.
 - Account numbers: generated with `crypto.getRandomValues`, stored as HMAC-SHA256 with a secret pepper from Worker env. Slow hashing is unnecessary because the credential is high-entropy, and it would exceed the 10 ms free-tier CPU limit.
 - Post body: no cap by policy (matching Mataroa); server rejects bodies over 1 MB to stay inside D1 row limits.
 - Sessions: random 32-byte id in D1, HttpOnly Secure SameSite=Lax cookie, 30-day expiry.
-- Rate limiting on login and signup: Cloudflare rate limiting rules on the free plan, plus per-account lockout after repeated failures.
+- Rate limiting on login and signup: Workers Rate Limiting bindings (`ratelimits` in `wrangler.jsonc`, GA since 2025-09, no dashboard rule needed), plus per-number lockout stored in D1 after repeated failures, plus a per-IP signup cap stored in D1.
 - No edit/delete routes exist. The D1 access pattern uses INSERT and SELECT only for `posts`; the only UPDATE is `hidden` on the admin path.
 - Admin: a single handle listed in Worker env is treated as admin.
 - Open source: all secrets (HMAC pepper, Turnstile secret, admin handle) are Worker secrets set via `wrangler secret put`. `.dev.vars` is gitignored. Nothing security-relevant depends on the code being private.
@@ -175,15 +179,15 @@ Decided up front because signup is open and anonymous.
 
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
-| 1 | Scaffold and deploy | Hono + D1 + Drizzle worker, schema, CI deploy to workers.dev, hello-world timeline | pending | - | - | - |
-| 2 | Account-number auth | Generate number, handle, HMAC storage, sessions, login/logout, Turnstile, rate limits | pending | - | 1 | - |
-| 3 | Write and publish | Editor page, markdown render, tags, hash-chain insert, post page | pending | with 4 | 2 | - |
-| 4 | Design system | Bear-inspired CSS, typography, layout, dark mode, mobile-first | pending | with 3 | 1 | - |
-| 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | pending | - | 3 | - |
-| 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | pending | with 7 | 3, 4 | - |
-| 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | pending | with 6 | 3 | - |
-| 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | pending | - | 3, 7 | - |
-| 8 | Server drafts and polish | Drafts table sync, passkey (optional), `SIGNUP_OPEN` flag | pending | with 9 | 5, 6, 7 | - |
+| 1 | Scaffold and deploy | Hono + D1 worker, schema, CI deploy to workers.dev, hello-world timeline | complete | - | - | shipped in commit e1e4666, live at https://pour.rezaahmadn.workers.dev |
+| 2 | Account-number auth | Generate number, handle, HMAC storage, sessions, login/logout, Turnstile, rate limits | complete | - | 1 | `.claude/PRPs/plans/completed/account-number-auth.plan.md` |
+| 3 | Write and publish | Editor page, markdown render, tags, hash-chain insert, post page | complete | with 4 | 2 | `.claude/PRPs/plans/completed/write-and-publish.plan.md` |
+| 4 | Design system | Bear-inspired CSS, typography, layout, dark mode, mobile-first | complete | with 3 | 1 | Lighthouse 100 across accessibility, best practices, SEO and agentic browsing on mobile; LCP 746 ms on Slow 4G with 4x CPU throttling |
+| 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | complete | - | 3 | Verified in a browser: type, kill the tab, reopen, restore |
+| 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | complete | with 7 | 3, 4 | One query per view; cursor paging on rowid rather than offset |
+| 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | complete | with 6 | 3 | Hidden entries stay on the timeline as placeholders so the record reads as continuous |
+| 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | complete | - | 3, 7 | R2 enabled and bucket `pour-images` created; deployed |
+| 8 | Server drafts and polish | Drafts table sync, passkey (optional), `SIGNUP_OPEN` flag | complete | with 9 | 5, 6, 7 | Passkey left out; it is a Could item and the number already works |
 
 ### Phase Details
 
@@ -238,6 +242,22 @@ Phases 3 and 4 can run together after auth exists: one builds routes and data, t
 
 ---
 
+## Executor Notes
+
+Conventions every implementation plan for this repo follows. Written so a smaller model can execute a plan without judgment calls.
+
+- **Stack facts**: Hono 4 on Workers, TypeScript strict, raw D1 (`c.env.DB.prepare`), HTML via `html` tagged template from `hono/html`, one CSS file in `public/`. No ORM, no framework, no bundler config.
+- **Tests**: vitest with `@cloudflare/vitest-plugin`; tests run inside workerd with a real local D1. Call the app with `app.request(url, init, env)` where `env` comes from `cloudflare:workers`. Never mock D1.
+- **Secrets**: `PEPPER`, `TURNSTILE_SECRET`, `ADMIN_HANDLE` come from `wrangler secret put` in prod and `.dev.vars` locally. Public config like `TURNSTILE_SITE_KEY` lives in `wrangler.jsonc` `vars`.
+- **Time**: all timestamps are integer Unix seconds. Use the shared `nowSec()` helper.
+- **Ids**: `crypto.randomUUID()` for rows, `randomHex(32)` for session ids.
+- **Writes that must be atomic**: use `c.env.DB.batch([...])`. A batch is one transaction; if any statement fails, none apply.
+- **Never** add an UPDATE or DELETE on `posts` except `hidden` on the admin path.
+- **Plans are the source of truth**: each plan carries full file contents. Copy them; do not redesign. When a plan and this PRD disagree on a detail, the plan wins and the PRD gets a fix-up commit.
+- **Validation order** before every commit: `npm run types`, `npm run check`, `npm test`. All three must be green.
+
+---
+
 ## Decisions Log
 
 | Decision | Choice | Alternatives | Rationale |
@@ -257,6 +277,19 @@ Phases 3 and 4 can run together after auth exists: one builds routes and data, t
 | Images | R2 with client-side re-encode | No images, Cloudflare Images | User wants images; R2 is free with zero egress; canvas re-encode strips EXIF for free |
 | Spam | Turnstile + rate limits + freeze + `SIGNUP_OPEN` flag | Invite-only, proof-of-work, manual approval | All free, no user friction for humans, reversible |
 | Number length | 16 digits | 20 digits | User choice; about 53 bits, adequate with rate limiting and HMAC pepper |
+| Image hash placement | Appended after the post's own fields | Mixed into the existing digest | Appending means a post with no pictures hashes to exactly what it did before images existed, so every entry already in the chain stays verifiable |
+| Upload trust | Magic bytes checked, canvas formats only | Trust the declared content type | The browser re-encode is what strips EXIF, so a file arriving as HEIC skipped it and still carries its GPS. Refusing the format is what makes the promise real |
+| Stylesheet delivery | Inlined into every page | Cached static file | Fetching it was the only thing blocking first paint, worth 538 ms of a 1.23 s LCP. It is 7.5 KB, and this project exists to be fast on a phone, so the round trip loses |
+| Draft conflict | Newer timestamp wins | Prompt to choose, merge | Both copies belong to one person, so the later keystroke is the one they meant. A merge prompt is ceremony over a half-written note |
+| Signup gate default | Open when `SIGNUP_OPEN` is unset | Closed by default | A missing variable should not lock everyone out. When it is closed and no invite code was configured, it stays shut instead, so the failure modes point the safe way in both directions |
+| Paging | Cursor on `rowid` | Page-number offsets | An offset shifts under you every time somebody publishes, which on an append-only timeline means re-reading rows you already saw |
+| Hidden posts in filtered views | Placeholder on the global timeline, omitted from handle and tag pages and from feeds | Placeholder everywhere | On a page already filtered to one author or tag, a placeholder announces that this person or subject in particular had something taken down |
+| Truncation | Stated as a known gap on `/verify` | Silently claim full tamper evidence | A chain read only from inside itself cannot prove entries were not cut from the end. The daily external anchor in the Could list is what would close it |
+| Markdown renderer | micromark, no separate sanitizer | markdown-it, marked, plus a sanitizer | Escapes raw HTML and drops dangerous protocols at its safe defaults, so there is no sanitizer to misconfigure. Also the smallest of the three by a wide margin, which matters for Worker startup |
+| Chain fork prevention | UNIQUE index on `posts.prev_hash` | Read the head then insert; a lock row | SQLite has no sha256, so the hash must be computed in JS, which makes read-then-insert a race. A unique parent makes a fork impossible to store at all, and the loser simply retries |
+| Login challenge | Turnstile after the client's first failure | Turnstile on every login; none at all | Never challenging leaves guessing through rotating addresses cheap. Always challenging makes a third-party widget a single point of failure for accounts that cannot be recovered |
+| Lock escalation | Doubling, 15 min to 24 h ceiling | Flat 15 min | A flat lock that resets its counter hands one client 5 fresh guesses every 15 minutes forever |
+| Login throttle key | Client IP (HMAC'd) | Per account number | A per-number counter never fires against enumeration, since each guess is a new key, and it grows the table by one row per guess. Corrected during phase 2 implementation; see migration `0003_login_lockout_by_client.sql` |
 | Recovery | None in v1, optional email later | Mandatory email, none ever | Keeps anonymous default; user wants an opt-in path eventually |
 
 ---
@@ -267,7 +300,7 @@ Phases 3 and 4 can run together after auth exists: one builds routes and data, t
 Bear Blog and Mataroa define the minimal, text-first, fast blog space. Bear supports tags and custom CSS and has a discovery feed; Mataroa organizes by date only. Both are single-author. Repov is a mobile-native mini-blog with typed entries (movies, books, places) and rich cards, but is slow to launch on the user's phone. No peer combines anonymous number-based accounts with a shared append-only timeline.
 
 **Technical Context**
-Hono on Cloudflare Workers with D1 and Drizzle is a well-documented stack. Key constraints: 10 ms CPU per request on free tier (rules out slow password hashing), one Drizzle instance per request, D1 is SQLite (no concern at this scale). Static assets binding serves CSS for free. Supabase free tier pauses inactive projects, which disqualifies it for a low-traffic personal site.
+Hono on Cloudflare Workers with D1 is a well-documented stack. Key constraints: 10 ms CPU per request on free tier (rules out slow password hashing), one Drizzle instance per request, D1 is SQLite (no concern at this scale). Static assets binding serves CSS for free. Supabase free tier pauses inactive projects, which disqualifies it for a low-traffic personal site.
 
 ---
 

@@ -1,2 +1,32 @@
+import path from "node:path";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
-export default defineConfig({ test: { include: ["test/**/*.test.ts"] } });
+
+export default defineConfig(async () => {
+  const migrations = await readD1Migrations(path.join(import.meta.dirname, "migrations"));
+  return {
+    plugins: [
+      cloudflareTest({
+        wrangler: { configPath: "./wrangler.jsonc" },
+        miniflare: {
+          r2Buckets: ["IMAGES"],
+          bindings: {
+            TEST_MIGRATIONS: migrations,
+            PEPPER: "test-pepper",
+            TURNSTILE_SECRET: "test-secret",
+            TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+            // Pinned here rather than left to .dev.vars, which CI does not have.
+            // The admin tests need a known handle in every environment.
+            ADMIN_HANDLE: "test_admin",
+            SIGNUP_OPEN: "true",
+            INVITE_CODE: "test-invite",
+          },
+        },
+      }),
+    ],
+    test: {
+      include: ["test/**/*.test.ts"],
+      setupFiles: ["./test/apply-migrations.ts"],
+    },
+  };
+});

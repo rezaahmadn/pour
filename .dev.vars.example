@@ -1,0 +1,6 @@
+# Copy to .dev.vars (gitignored). These Turnstile values are Cloudflare's always-pass test keys.
+PEPPER=dev-pepper-change-me
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+ADMIN_HANDLE=reza
+INVITE_CODE=local-invite
