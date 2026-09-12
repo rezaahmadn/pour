@@ -12,13 +12,16 @@ export const STYLES = `/* pour. Text first, one accent, system fonts, mobile fir
 :root {
   color-scheme: light dark;
 
-  --bg: #fffdfa;
-  --fg: #1b1a18;
-  --muted: #6d6a64;
-  --line: #e4dfd6;
-  --accent: #b0521d;
-  --wash: #f7f0e8;
-  --danger: #9c3318;
+  /* Paper and ink, not a warm wash. The accent earns its place by marking what
+     you can act on, and nothing else; red is kept back for things going wrong,
+     so the two never have to argue about what a colour means. */
+  --bg: #ffffff;
+  --fg: #16161a;
+  --muted: #5f5f6b;
+  --line: #e3e3e8;
+  --accent: #1a3fa8;
+  --wash: #f3f4f9;
+  --danger: #a11212;
 
   --s1: 0.35rem;
   --s2: 0.7rem;
@@ -26,18 +29,21 @@ export const STYLES = `/* pour. Text first, one accent, system fonts, mobile fir
   --s4: 1.9rem;
   --s5: 3rem;
 
-  --radius: 7px;
+  --radius: 5px;
+
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #131312;
-    --fg: #e9e6e0;
-    --muted: #98948c;
-    --line: #2e2d2a;
-    --accent: #e28b53;
-    --wash: #201d1a;
-    --danger: #e0806a;
+    --bg: #0e0e11;
+    --fg: #e8e8ec;
+    --muted: #9494a0;
+    --line: #26262d;
+    --accent: #9db4ff;
+    --wash: #17171d;
+    --danger: #ff9494;
   }
 }
 
@@ -53,7 +59,7 @@ body {
   padding: var(--s4) var(--s3) var(--s5);
   background: var(--bg);
   color: var(--fg);
-  font: 1.05rem/1.65 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 1rem/1.6 var(--sans);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -113,10 +119,11 @@ header nav form {
 /* Typography */
 
 h1 {
-  margin: 0 0 var(--s3);
-  font-size: 1.6rem;
-  line-height: 1.25;
-  letter-spacing: -0.012em;
+  margin: 0 0 var(--s4);
+  font-size: 2rem;
+  font-weight: 640;
+  line-height: 1.15;
+  letter-spacing: -0.022em;
 }
 
 p {
@@ -206,7 +213,6 @@ button:hover {
   margin: 0 0 var(--s4);
   padding: var(--s3) var(--s2);
   background: var(--wash);
-  border: 1px dashed var(--line);
   border-radius: var(--radius);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: clamp(1.25rem, 6.2vw, 1.85rem);
@@ -272,6 +278,12 @@ textarea:focus {
   margin: 0;
 }
 
+.excerpt {
+  font-family: var(--serif);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
 .excerpt a {
   color: var(--fg);
   text-decoration: none;
@@ -304,6 +316,9 @@ textarea:focus {
 
 .post {
   overflow-wrap: break-word;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  line-height: 1.7;
 }
 
 .post > :first-child {
@@ -367,10 +382,9 @@ textarea:focus {
   align-items: center;
   gap: var(--s2) var(--s3);
   margin: var(--s3) 0;
-  padding: var(--s2) var(--s3);
+  padding: var(--s3);
   background: var(--wash);
-  border-left: 3px solid var(--accent);
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-radius: var(--radius);
   font-size: 0.95rem;
 }
 
