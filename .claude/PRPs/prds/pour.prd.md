@@ -186,7 +186,7 @@ Decided up front because signup is open and anonymous.
 | 5 | Autosave | localStorage draft with restore, flush on visibilitychange/pagehide, clear on publish | complete | - | 3 | Verified in a browser: type, kill the tab, reopen, restore |
 | 6 | Timeline views | Global paginated timeline, `/@handle`, `/tag/:tag`, RSS | complete | with 7 | 3, 4 | One query per view; cursor paging on rowid rather than offset |
 | 7 | Admin and ledger | Hide flag, account freeze, admin route, `/verify` chain endpoint | complete | with 6 | 3 | Hidden entries stay on the timeline as placeholders so the record reads as continuous |
-| 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | built, not deployed | - | 3, 7 | Blocked on enabling R2 in the Cloudflare dashboard, which needs a human. Verified locally against simulated R2 |
+| 9 | Images | R2 bucket, client-side resize and re-encode, upload route, image hashes in chain | complete | - | 3, 7 | R2 enabled and bucket `pour-images` created; deployed |
 | 8 | Server drafts and polish | Drafts table sync, passkey (optional), `SIGNUP_OPEN` flag | complete | with 9 | 5, 6, 7 | Passkey left out; it is a Could item and the number already works |
 
 ### Phase Details
